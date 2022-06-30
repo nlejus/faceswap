@@ -19,7 +19,7 @@ class Writer(Output):
     def check_transparency_format(self):
         """ Make sure that the output format is correct if draw_transparent is selected """
         transparent = self.config["draw_transparent"]
-        if not transparent or (transparent and self.config["format"] in ("png", "tif")):
+        if not transparent or self.config["format"] in ("png", "tif"):
             return
         logger.warning("Draw Transparent selected, but the requested format does not support "
                        "transparency. Changing output format to 'png'")
@@ -28,14 +28,14 @@ class Writer(Output):
     def get_save_kwargs(self):
         """ Return the save parameters for the file format """
         filetype = self.config["format"]
-        kwargs = dict()
+        kwargs = {}
         if filetype in ("gif", "jpg", "png"):
             kwargs["optimize"] = self.config["optimize"]
         if filetype == "gif":
             kwargs["interlace"] = self.config["gif_interlace"]
-        if filetype == "png":
+        elif filetype == "png":
             kwargs["compress_level"] = self.config["png_compress_level"]
-        if filetype == "tif":
+        elif filetype == "tif":
             kwargs["compression"] = self.config["tif_compression"]
         logger.debug(kwargs)
         return kwargs

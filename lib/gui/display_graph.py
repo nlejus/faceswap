@@ -49,7 +49,7 @@ class NavigationToolbar(NavigationToolbar2Tk):  # pylint: disable=too-many-ances
             message label packed to the left """
         xmin, xmax = self.canvas.figure.bbox.intervalx
         height, width = 50, xmax-xmin
-        ttk.Frame.__init__(self, master=self.window, width=int(width), height=int(height))
+        ttk.Frame.__init__(self, master=self.window, width=int(width), height=height)
 
         sep = ttk.Frame(self, height=2, relief=tk.RIDGE)
         sep.pack(fill=tk.X, pady=(5, 0), side=tk.TOP)
@@ -86,7 +86,7 @@ class GraphBase(ttk.Frame):  # pylint: disable=too-many-ancestors
         self.ylabel = ylabel
         self.colourmaps = ["Reds", "Blues", "Greens", "Purples", "Oranges", "Greys", "copper",
                            "summer", "bone", "hot", "cool", "pink", "Wistia", "spring", "winter"]
-        self.lines = list()
+        self.lines = []
         self.toolbar = None
         self.fig = Figure(figsize=(4, 4), dpi=75)
 
@@ -114,12 +114,12 @@ class GraphBase(ttk.Frame):  # pylint: disable=too-many-ancestors
         logger.trace("Updating plot")
         if initiate:
             logger.debug("Initializing plot")
-            self.lines = list()
+            self.lines = []
             self.ax1.clear()
             self.axes_labels_set()
             logger.debug("Initialized plot")
 
-        fulldata = [item for item in self.calcs.stats.values()]
+        fulldata = list(self.calcs.stats.values())
         self.axes_limits_set(fulldata)
 
         if self.calcs.start_iteration > 0:
@@ -192,8 +192,8 @@ class GraphBase(ttk.Frame):  # pylint: disable=too-many-ancestors
         """ Sort the data keys into consistent order
             and set line color map and line width """
         logger.trace("Sorting lines")
-        raw_lines = list()
-        sorted_lines = list()
+        raw_lines = []
+        sorted_lines = []
         for key in sorted(keys):
             title = key.replace("_", " ").title()
             if key.startswith("raw"):
@@ -203,8 +203,7 @@ class GraphBase(ttk.Frame):  # pylint: disable=too-many-ancestors
 
         groupsize = self.lines_groupsize(raw_lines, sorted_lines)
         sorted_lines = raw_lines + sorted_lines
-        lines = self.lines_style(sorted_lines, groupsize)
-        return lines
+        return self.lines_style(sorted_lines, groupsize)
 
     @staticmethod
     def lines_groupsize(raw_lines, sorted_lines):
@@ -234,9 +233,9 @@ class GraphBase(ttk.Frame):  # pylint: disable=too-many-ancestors
 
     def lines_create_colors(self, groupsize, groups):
         """ Create the colors """
-        colours = list()
+        colours = []
         for i in range(1, groups + 1):
-            for colour in self.colourmaps[0:groupsize]:
+            for colour in self.colourmaps[:groupsize]:
                 cmap = matplotlib.cm.get_cmap(colour)
                 cpoint = 1 - (i / 5)
                 colours.append(cmap(cpoint))
@@ -320,10 +319,10 @@ class TrainingGraph(GraphBase):  # pylint: disable=too-many-ancestors
                        if key.startswith("raw_")])
         filename = " - ".join(keys)
         now = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-        filename = os.path.join(location, "{}_{}.{}".format(filename, now, "png"))
+        filename = os.path.join(location, f"{filename}_{now}.png")
         self.fig.set_size_inches(16, 9)
         self.fig.savefig(filename, bbox_inches="tight", dpi=120)
-        print("Saved graph to {}".format(filename))
+        print(f"Saved graph to {filename}")
         logger.debug("Saved graph: '%s'", filename)
         self.resize_fig()
 

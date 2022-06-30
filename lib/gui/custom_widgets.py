@@ -249,8 +249,7 @@ class _SysOutRouter():
         output = self._recolor.match(string)
         if not output:
             return "default"
-        tag = output.groupdict()["lvl"].strip().lower()
-        return tag
+        return output.groupdict()["lvl"].strip().lower()
 
     def write(self, string):
         """ Capture stdout/stderr """
@@ -307,7 +306,7 @@ class _WidgetRedirector:
         self.widget = widget                                # widget instance
         self.tk_ = tk_ = widget.tk                          # widget's root
         wgt = widget._w  # pylint:disable=protected-access  # widget's (full) Tk pathname
-        self.orig = wgt + "_orig"
+        self.orig = f"{wgt}_orig"
         # Rename the Tcl command within Tcl:
         tk_.call("rename", wgt, self.orig)
         # Create a new Tcl command whose name is the widget's path name, and
@@ -315,9 +314,7 @@ class _WidgetRedirector:
         tk_.createcommand(wgt, self.dispatch)
 
     def __repr__(self):
-        return "%s(%s<%s>)" % (self.__class__.__name__,
-                               self.widget.__class__.__name__,
-                               self.widget._w)  # pylint:disable=protected-access
+        return f"{self.__class__.__name__}({self.widget.__class__.__name__}<{self.widget._w}>)"
 
     def close(self):
         "de-register operations and revert redirection created by .__init__."
@@ -376,9 +373,7 @@ class _WidgetRedirector:
         """
         op_ = self._operations.get(operation)
         try:
-            if op_:
-                return op_(*args)
-            return self.tk_.call((self.orig, operation) + args)
+            return op_(*args) if op_ else self.tk_.call((self.orig, operation) + args)
         except TclError:
             return ""
 
@@ -620,12 +615,9 @@ class Tooltip:  # pylint:disable=too-few-public-methods
             x_2, y_2 = x_1 + width, y_1 + height
 
             x_delta = x_2 - s_width
-            if x_delta < 0:
-                x_delta = 0
+            x_delta = max(x_delta, 0)
             y_delta = y_2 - s_height
-            if y_delta < 0:
-                y_delta = 0
-
+            y_delta = max(y_delta, 0)
             offscreen = (x_delta, y_delta) != (0, 0)
 
             if offscreen:
@@ -691,8 +683,7 @@ class Tooltip:  # pylint:disable=too-few-public-methods
 
     def _hide(self):
         """ Hide the tooltip """
-        topwidget = self._topwidget
-        if topwidget:
+        if topwidget := self._topwidget:
             topwidget.destroy()
         self._topwidget = None
 
@@ -916,7 +907,7 @@ class ToggledFrame(ttk.Frame):  # pylint:disable=too-many-ancestors
         logger.debug("Initializing %s: (parent: %s, text: %s, theme: %s, toggle_var: %s)",
                      self.__class__.__name__, parent, text, theme, toggle_var)
 
-        theme = "CPanel" if not theme else theme
+        theme = theme or "CPanel"
         theme = theme[:-1] if theme[-1] == "." else theme
         super().__init__(parent, *args, style=f"{theme}.Group.TFrame", **kwargs)
         self._text = text

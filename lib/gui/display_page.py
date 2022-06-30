@@ -110,7 +110,7 @@ class DisplayPage(ttk.Frame):  # pylint: disable=too-many-ancestors
     def subnotebook_add_page(self, tabtitle, widget=None):
         """ Add a page to the sub notebook """
         logger.debug("Adding subnotebook page: %s", tabtitle)
-        frame = widget if widget else ttk.Frame(self.subnotebook)
+        frame = widget or ttk.Frame(self.subnotebook)
         frame.pack(padx=5, pady=5, fill=tk.BOTH, expand=True)
         self.subnotebook.add(frame, text=tabtitle)
         self.subnotebook_configure()
@@ -146,14 +146,15 @@ class DisplayPage(ttk.Frame):  # pylint: disable=too-many-ancestors
             subnotebook frame """
         logger.debug("Getting subnotebook widgets")
         for child in self.subnotebook.winfo_children():
-            for widget in child.winfo_children():
-                yield widget
+            yield from child.winfo_children()
 
     def subnotebook_get_titles_ids(self):
         """ Return tabs ids and titles """
-        tabs = dict()
-        for tab_id in range(0, self.subnotebook.index("end")):
-            tabs[self.subnotebook.tab(tab_id, "text")] = tab_id
+        tabs = {
+            self.subnotebook.tab(tab_id, "text"): tab_id
+            for tab_id in range(self.subnotebook.index("end"))
+        }
+
         logger.debug(tabs)
         return tabs
 
@@ -213,11 +214,11 @@ class DisplayOptionalPage(DisplayPage):  # pylint: disable=too-many-ancestors
     def set_info_text(self):
         """ Set waiting for display text """
         if not self.vars["enabled"].get():
-            msg = "{} disabled".format(self.tabname.title())
+            msg = f"{self.tabname.title()} disabled"
         elif self.vars["enabled"].get() and not self.vars["ready"].get():
-            msg = "Waiting for {}...".format(self.tabname)
+            msg = f"Waiting for {self.tabname}..."
         else:
-            msg = "Displaying {}".format(self.tabname)
+            msg = f"Displaying {self.tabname}"
         logger.debug(msg)
         self.set_info(msg)
 
@@ -241,10 +242,13 @@ class DisplayOptionalPage(DisplayPage):  # pylint: disable=too-many-ancestors
     def add_option_enable(self):
         """ Add check-button to enable/disable page """
         logger.debug("Adding enable option")
-        chkenable = ttk.Checkbutton(self.optsframe,
-                                    variable=self.vars["enabled"],
-                                    text="Enable {}".format(self.tabname),
-                                    command=self.on_chkenable_change)
+        chkenable = ttk.Checkbutton(
+            self.optsframe,
+            variable=self.vars["enabled"],
+            text=f"Enable {self.tabname}",
+            command=self.on_chkenable_change,
+        )
+
         chkenable.pack(side=tk.RIGHT, padx=5, anchor=tk.W)
         Tooltip(chkenable,
                 text=_("Enable or disable {} display").format(self.tabname),

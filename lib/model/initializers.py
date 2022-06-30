@@ -56,7 +56,7 @@ def compute_fans(shape, data_format='channels_last'):
             fan_in = shape[-2] * receptive_field_size
             fan_out = shape[-1] * receptive_field_size
         else:
-            raise ValueError('Invalid data_format: ' + data_format)
+            raise ValueError(f'Invalid data_format: {data_format}')
     else:
         # No specific assumptions.
         fan_in = np.sqrt(np.prod(shape))
@@ -228,7 +228,7 @@ class ConvolutionAware(initializers.Initializer):
         # is not passed in.
         if self.initialized:   # Avoid re-calculating initializer when loading a saved model
             return self.he_uniform(shape, dtype=dtype)
-        dtype = K.floatx() if not isinstance(dtype, str) else dtype
+        dtype = dtype if isinstance(dtype, str) else K.floatx()
         logger.info("Calculating Convolution Aware Initializer for shape: %s", shape)
         rank = len(shape)
         if self.seed is not None:
@@ -285,8 +285,9 @@ class ConvolutionAware(initializers.Initializer):
         var_a = np.random.normal(0.0, 1.0, (filters_size, nbb, size, size))
         var_a = self._symmetrize(var_a)
         var_u = np.linalg.svd(var_a)[0].transpose(0, 1, 3, 2)
-        var_p = np.reshape(var_u, (filters_size, nbb * size, size))[:, :filters, :].astype(dtype)
-        return var_p
+        return np.reshape(var_u, (filters_size, nbb * size, size))[
+            :, :filters, :
+        ].astype(dtype)
 
     @staticmethod
     def _symmetrize(var_a):

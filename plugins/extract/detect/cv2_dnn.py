@@ -44,7 +44,7 @@ class Detect(Detector):
 
     def finalize_predictions(self, predictions):
         """ Filter faces based on confidence level """
-        faces = list()
+        faces = []
         for i in range(predictions.shape[2]):
             confidence = predictions[0, 0, i, 2]
             if confidence >= self.confidence:

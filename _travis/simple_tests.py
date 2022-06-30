@@ -31,9 +31,7 @@ def print_colored(text, color="OK", bold=False):
     although travis runs windows stuff in git bash, so it might ?
     """
     color = _COLORS.get(color, color)
-    print("%s%s%s%s" % (
-        color, "" if not bold else _COLORS["BOLD"], text, _COLORS["ENDC"]
-    ))
+    print(f'{color}{_COLORS["BOLD"] if bold else ""}{text}{_COLORS["ENDC"]}')
 
 
 def print_ok(text):
@@ -54,20 +52,20 @@ def print_status(text):
 def run_test(name, cmd):
     """ run a test """
     global FAIL_COUNT, TEST_COUNT  # pylint:disable=global-statement
-    print_status("[?] running %s" % name)
-    print("Cmd: %s" % " ".join(cmd))
+    print_status(f"[?] running {name}")
+    print(f'Cmd: {" ".join(cmd)}')
     TEST_COUNT += 1
     try:
         check_call(cmd)
         print_ok("[+] Test success")
         return True
     except CalledProcessError as err:
-        print_fail("[-] Test failed with %s" % err)
+        print_fail(f"[-] Test failed with {err}")
         FAIL_COUNT += 1
         return False
 
 
-def download_file(url, filename):  # TODO: retry
+def download_file(url, filename):    # TODO: retry
     """ Download a file from given url """
     if os.path.isfile(filename):
         print_status("[?] '%s' already cached as '%s'" % (url, filename))
@@ -77,18 +75,17 @@ def download_file(url, filename):  # TODO: retry
         video, _ = urlretrieve(url, filename)
         return video
     except urllib.error.URLError as err:
-        print_fail("[-] Failed downloading: %s" % err)
+        print_fail(f"[-] Failed downloading: {err}")
         return None
 
 
 def extract_args(detector, aligner, in_path, out_path, args=None):
     """ Extraction command """
     py_exe = sys.executable
-    _extract_args = "%s faceswap.py extract -i %s -o %s -D %s -A %s" % (
-        py_exe, in_path, out_path, detector, aligner
-    )
+    _extract_args = f"{py_exe} faceswap.py extract -i {in_path} -o {out_path} -D {detector} -A {aligner}"
+
     if args:
-        _extract_args += " %s" % args
+        _extract_args += f" {args}"
     return _extract_args.split()
 
 
@@ -104,20 +101,18 @@ def train_args(model, model_path, faces, alignments, iterations=5, batchsize=8, 
 def convert_args(in_path, out_path, model_path, writer, args=None):
     """ Convert command """
     py_exe = sys.executable
-    conv_args = "%s faceswap.py convert -i %s -o %s -m %s -w %s" % (
-        py_exe, in_path, out_path, model_path, writer
-    )
+    conv_args = f"{py_exe} faceswap.py convert -i {in_path} -o {out_path} -m {model_path} -w {writer}"
+
     if args:
-        conv_args += " %s" % args
+        conv_args += f" {args}"
     return conv_args.split()  # Don't use pathes with spaces ;)
 
 
 def sort_args(in_path, out_path, sortby="face", groupby="hist", method="rename"):
     """ Sort command """
     py_exe = sys.executable
-    _sort_args = "%s tools.py sort -i %s -o %s -s %s -fp %s -g %s -k" % (
-        py_exe, in_path, out_path, sortby, method, groupby
-    )
+    _sort_args = f"{py_exe} tools.py sort -i {in_path} -o {out_path} -s {sortby} -fp {method} -g {groupby} -k"
+
     return _sort_args.split()
 
 

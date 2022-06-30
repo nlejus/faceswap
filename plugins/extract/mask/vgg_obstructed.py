@@ -150,7 +150,7 @@ class _ConvBlock():  # pylint:disable=too-few-public-methods
         The number of consecutive Conv2D layers to create
     """
     def __init__(self, level, filters, iterations):
-        self._name = "conv{}_".format(level)
+        self._name = f"conv{level}_"
         self._level = level
         self._filters = filters
         self._iterator = range(1, iterations + 1)
@@ -171,14 +171,18 @@ class _ConvBlock():  # pylint:disable=too-few-public-methods
         var_x = inputs
         for i in self._iterator:
             padding = "valid" if self._level == i == 1 else "same"
-            var_x = Conv2D(self._filters,
-                           3,
-                           padding=padding,
-                           activation="relu",
-                           name="{}{}".format(self._name, i))(var_x)
-        var_x = MaxPooling2D(padding="same",
-                             strides=(2, 2),
-                             name="pool{}".format(self._level))(var_x)
+            var_x = Conv2D(
+                self._filters,
+                3,
+                padding=padding,
+                activation="relu",
+                name=f"{self._name}{i}",
+            )(var_x)
+
+        var_x = MaxPooling2D(
+            padding="same", strides=(2, 2), name=f"pool{self._level}"
+        )(var_x)
+
         return var_x
 
 
@@ -195,7 +199,7 @@ class _ScorePool():  # pylint:disable=too-few-public-methods
         The amount of 2D cropping to apply
     """
     def __init__(self, level, scale, crop):
-        self._name = "_pool{}".format(level)
+        self._name = f"_pool{level}"
         self._cropping = ((crop, crop), (crop, crop))
         self._scale = scale
 
@@ -212,11 +216,10 @@ class _ScorePool():  # pylint:disable=too-few-public-methods
         tensor
             The output tensor from the score pool block
         """
-        var_x = Lambda(lambda x: x * self._scale, name="scale" + self._name)(inputs)
-        var_x = Conv2D(21,
-                       1,
-                       padding="valid",
-                       activation="linear",
-                       name="score" + self._name)(var_x)
-        var_x = Cropping2D(cropping=self._cropping, name="score" + self._name + "c")(var_x)
+        var_x = Lambda(lambda x: x * self._scale, name=f"scale{self._name}")(inputs)
+        var_x = Conv2D(
+            21, 1, padding="valid", activation="linear", name=f"score{self._name}"
+        )(var_x)
+
+        var_x = Cropping2D(cropping=self._cropping, name=f"score{self._name}c")(var_x)
         return var_x

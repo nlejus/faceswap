@@ -38,7 +38,7 @@ class Detect(Detector):
 
         if kwargs["minsize"] < 10:
             valid = False
-        elif not all(0.0 < threshold <= 1.0 for threshold in kwargs['threshold']):
+        elif any((0.0 < threshold <= 1.0 for threshold in kwargs['threshold'])):
             valid = False
         elif not 0.0 < kwargs['factor'] < 1.0:
             valid = False
@@ -234,8 +234,8 @@ class MTCNN():
         rectangles = self.detect_pnet(batch, origin_h, origin_w)
         rectangles = self.detect_rnet(batch, rectangles, origin_h, origin_w)
         rectangles = self.detect_onet(batch, rectangles, origin_h, origin_w)
-        ret_boxes = list()
-        ret_points = list()
+        ret_boxes = []
+        ret_points = []
         for rects in rectangles:
             if rects:
                 total_boxes = np.array([result[:5] for result in rects])
@@ -287,13 +287,11 @@ class MTCNN():
                 ret.append(list())
                 continue
             image = images[idx]
-            crop_number = 0
             predict_24_batch = []
             for rect in rectangles:
                 crop_img = image[int(rect[1]):int(rect[3]), int(rect[0]):int(rect[2])]
                 scale_img = cv2.resize(crop_img, (24, 24))
                 predict_24_batch.append(scale_img)
-                crop_number += 1
             predict_24_batch = np.array(predict_24_batch)
             output = self.rnet.predict(predict_24_batch, batch_size=128)
             cls_prob = output[0]
@@ -307,20 +305,18 @@ class MTCNN():
 
     def detect_onet(self, images, rectangle_batch, height, width):
         """ third stage - further refinement and facial landmarks positions with o-net """
-        ret = list()
+        ret = []
         # TODO: batching
         for idx, rectangles in enumerate(rectangle_batch):
             if not rectangles:
                 ret.append(list())
                 continue
             image = images[idx]
-            crop_number = 0
             predict_batch = []
             for rect in rectangles:
                 crop_img = image[int(rect[1]):int(rect[3]), int(rect[0]):int(rect[2])]
                 scale_img = cv2.resize(crop_img, (48, 48))
                 predict_batch.append(scale_img)
-                crop_number += 1
             predict_batch = np.array(predict_batch)
             output = self.onet.predict(predict_batch, batch_size=128)
             cls_prob = output[0]
@@ -351,9 +347,7 @@ def detect_face_12net(cls_prob, roi, out_side, scale, width, height, threshold):
         threshold: 0.6 can have 99% recall rate
     """
     in_side = 2*out_side+11
-    stride = 0
-    if out_side != 1:
-        stride = float(in_side-12)/(out_side-1)
+    stride = float(in_side-12)/(out_side-1) if out_side != 1 else 0
     (var_x, var_y) = np.where(cls_prob >= threshold)
     boundingbox = np.array([var_x, var_y]).T
     bb1 = np.fix((stride * (boundingbox) + 0) * scale)
@@ -504,21 +498,20 @@ def nms(rectangles, threshold, method):
     pick = []
     while len(s_sort) > 0:
         # s_sort[-1] have highest prob score, s_sort[0:-1]->others
-        xx_1 = np.maximum(x_1[s_sort[-1]], x_1[s_sort[0:-1]])
-        yy_1 = np.maximum(y_1[s_sort[-1]], y_1[s_sort[0:-1]])
-        xx_2 = np.minimum(x_2[s_sort[-1]], x_2[s_sort[0:-1]])
-        yy_2 = np.minimum(y_2[s_sort[-1]], y_2[s_sort[0:-1]])
+        xx_1 = np.maximum(x_1[s_sort[-1]], x_1[s_sort[:-1]])
+        yy_1 = np.maximum(y_1[s_sort[-1]], y_1[s_sort[:-1]])
+        xx_2 = np.minimum(x_2[s_sort[-1]], x_2[s_sort[:-1]])
+        yy_2 = np.minimum(y_2[s_sort[-1]], y_2[s_sort[:-1]])
         width = np.maximum(0.0, xx_2 - xx_1 + 1)
         height = np.maximum(0.0, yy_2 - yy_1 + 1)
         inter = width * height
         if method == 'iom':
-            var_o = inter / np.minimum(area[s_sort[-1]], area[s_sort[0:-1]])
+            var_o = inter / np.minimum(area[s_sort[-1]], area[s_sort[:-1]])
         else:
-            var_o = inter / (area[s_sort[-1]] + area[s_sort[0:-1]] - inter)
+            var_o = inter / (area[s_sort[-1]] + area[s_sort[:-1]] - inter)
         pick.append(s_sort[-1])
         s_sort = s_sort[np.where(var_o <= threshold)[0]]
-    result_rectangle = boxes[pick].tolist()
-    return result_rectangle
+    return boxes[pick].tolist()
 
 
 def calculate_scales(height, width, minsize, factor):

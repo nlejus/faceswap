@@ -69,7 +69,7 @@ class Aligner(Extractor):  # pylint:disable=abstract-method
         self.set_normalize_method(normalize_method)
 
         self._plugin_type = "align"
-        self._faces_per_filename = dict()  # Tracking for recompiling face batches
+        self._faces_per_filename = {}
         self._rollover = None  # Items that are rolled over from the previous batch in get_batch
         self._output_faces = []
         self._additional_keys = []
@@ -122,7 +122,7 @@ class Aligner(Extractor):  # pylint:disable=abstract-method
             A dictionary of lists of :attr:`~plugins.extract._base.Extractor.batchsize`:
         """
         exhausted = False
-        batch = dict()
+        batch = {}
         idx = 0
         while idx < self.batchsize:
             item = self._collect_item(queue)
@@ -247,7 +247,7 @@ class Aligner(Extractor):  # pylint:disable=abstract-method
         original_boxes = np.array([(face.x, face.y, face.w, face.h)
                                    for face in batch["detected_faces"]])
         adjusted_boxes = self._get_adjusted_boxes(original_boxes)
-        retval = dict()
+        retval = {}
         for bounding_boxes in adjusted_boxes:
             for face, box in zip(batch["detected_faces"], bounding_boxes):
                 face.x, face.y, face.w, face.h = box
@@ -356,7 +356,7 @@ class Aligner(Extractor):  # pylint:disable=abstract-method
         if self._normalize_method is None:
             return faces
         logger.trace("Normalizing faces")
-        meth = getattr(self, "_normalize_{}".format(self._normalize_method.lower()))
+        meth = getattr(self, f"_normalize_{self._normalize_method.lower()}")
         faces = [meth(face) for face in faces]
         logger.trace("Normalized faces")
         return faces

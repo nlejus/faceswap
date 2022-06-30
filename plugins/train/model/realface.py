@@ -57,8 +57,11 @@ class Model(ModelBase):
         """ Return the dense width and number of upscale blocks """
         output_size = self.config["output_size"]
         sides = [(output_size // 2**n, n) for n in [4, 5] if (output_size // 2**n) < 10]
-        closest = min([x * self._downscale_ratio for x, _ in sides],
-                      key=lambda x: abs(x - self.config["input_size"]))
+        closest = min(
+            (x * self._downscale_ratio for x, _ in sides),
+            key=lambda x: abs(x - self.config["input_size"]),
+        )
+
         dense_width, upscalers_no = [(s, n) for s, n in sides
                                      if s * self._downscale_ratio == closest][0]
         logger.debug("dense_width: %s, upscalers_no: %s", dense_width, upscalers_no)
@@ -72,8 +75,7 @@ class Model(ModelBase):
 
         outputs = [self.decoder_a()(encoder_a), self.decoder_b()(encoder_b)]
 
-        autoencoder = KerasModel(inputs, outputs, name=self.name)
-        return autoencoder
+        return KerasModel(inputs, outputs, name=self.name)
 
     def encoder(self):
         """ RealFace Encoder Network """
@@ -183,6 +185,8 @@ class Model(ModelBase):
 
     def _legacy_mapping(self):
         """ The mapping of legacy separate model names to single model names """
-        return {"{}_encoder.h5".format(self.name): "encoder",
-                "{}_decoder_A.h5".format(self.name): "decoder_a",
-                "{}_decoder_B.h5".format(self.name): "decoder_b"}
+        return {
+            f"{self.name}_encoder.h5": "encoder",
+            f"{self.name}_decoder_A.h5": "decoder_a",
+            f"{self.name}_decoder_B.h5": "decoder_b",
+        }

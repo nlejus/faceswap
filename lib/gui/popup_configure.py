@@ -1,6 +1,7 @@
 #!/usr/bin python3
 """ The pop-up window of the Faceswap GUI for the setting of configuration options. """
 
+
 from collections import OrderedDict
 from configparser import ConfigParser
 import gettext
@@ -25,7 +26,7 @@ _ = _LANG.gettext
 
 _POPUP = []
 _CONFIG_FILES = []
-_CONFIGS = dict()
+_CONFIGS = {}
 
 
 class _State():
@@ -34,7 +35,7 @@ class _State():
         self._popup = None
         # The GUI Config cannot be scanned until GUI is launched, so this is populated
         # on the first call to load the settings
-        self._configs = dict()
+        self._configs = {}
 
     def open_popup(self, name=None):
         """ Launch the popup, ensuring only one instance is ever open
@@ -143,7 +144,7 @@ class _ConfigurePlugins(tk.Toplevel):
         content_frame.pack(fill=tk.BOTH, padx=5, pady=(0, 5), expand=True, side=tk.TOP)
         footer_frame.pack(fill=tk.X, padx=5, pady=(0, 5), side=tk.BOTTOM)
 
-        select = name if name else self._tree.get_children()[0]
+        select = name or self._tree.get_children()[0]
         self._tree.selection_set(select)
         self._tree.focus(select)
         self._select_item(0)
@@ -162,7 +163,7 @@ class _ConfigurePlugins(tk.Toplevel):
         width = int(600 * scaling_factor)
         height = int(536 * scaling_factor)
         logger.debug("Pop up Geometry: %sx%s, %s+%s", width, height, pos_x, pos_y)
-        self.geometry("{}x{}+{}+{}".format(width, height, pos_x, pos_y))
+        self.geometry(f"{width}x{height}+{pos_x}+{pos_y}")
 
     def _build_header(self):
         """ Build the main header text and separator. """
@@ -229,7 +230,7 @@ class _ConfigurePlugins(tk.Toplevel):
         logger.debug("Added action buttons")
         return frame
 
-    def _select_item(self, event):  # pylint:disable=unused-argument
+    def _select_item(self, event):    # pylint:disable=unused-argument
         """ Update the session summary info with the selected item or launch graph.
 
         If the mouse is clicked on the graph icon, then the session summary pop-up graph is
@@ -243,7 +244,7 @@ class _ConfigurePlugins(tk.Toplevel):
         selection = self._tree.focus()
         section = selection.split("|")[0]
         subsections = selection.split("|")[1:] if "|" in selection else []
-        self._tk_vars["header"].set("{} Settings".format(section.title()))
+        self._tk_vars["header"].set(f"{section.title()} Settings")
         self._opts_frame.select_options(section, subsections)
 
 
@@ -336,9 +337,9 @@ class _Tree(ttk.Frame):  # pylint:disable=too-many-ancestors
         categories += [x for x in ordered if x not in categories]
 
         for cat in categories:
-            img = get_images().icons.get("settings_{}".format(cat), "")
+            img = get_images().icons.get(f"settings_{cat}", "")
             text = cat.replace("_", " ").title()
-            text = " " + text if img else text
+            text = f" {text}" if img else text
             is_open = tk.TRUE if name is None or name == cat else tk.FALSE
             tree.insert("", "end", cat, text=text, image=img, open=is_open, tags="category")
             self._process_sections(tree, data[cat], cat, name == cat)
@@ -372,14 +373,14 @@ class _Tree(ttk.Frame):  # pylint:disable=too-many-ancestors
             if section[-1] == "global":  # Global categories get escalated to parent
                 continue
             sect = section[0]
-            section_id = "{}|{}".format(category, sect)
+            section_id = f"{category}|{sect}"
             if sect not in seen:
                 seen.add(sect)
                 text = sect.replace("_", " ").title()
                 tree.insert(category, "end", section_id, text=text, open=is_open, tags="section")
             if len(section) == 2:
                 opt = section[-1]
-                opt_id = "{}|{}".format(section_id, opt)
+                opt_id = f"{section_id}|{opt}"
                 opt_text = opt.replace("_", " ").title()
                 tree.insert(section_id, "end", opt_id, text=opt_text, open=is_open, tags="option")
 
@@ -406,8 +407,8 @@ class DisplayArea(ttk.Frame):  # pylint:disable=too-many-ancestors
         self._configs = configurations
         self._theme = theme
         self._tree = tree
-        self._vars = dict()
-        self._cache = dict()
+        self._vars = {}
+        self._cache = {}
         self._config_cpanel_dict = self._get_config()
         self._displayed_frame = None
         self._displayed_key = None
@@ -436,14 +437,14 @@ class DisplayArea(ttk.Frame):  # pylint:disable=too-many-ancestors
             objects
         """
         logger.debug("Formatting Config for GUI")
-        retval = dict()
+        retval = {}
         for plugin, conf in self._configs.items():
             for section in conf.config.sections():
                 conf.section = section
                 category = section.split(".")[0]
                 sect = section.split(".")[-1]
                 # Elevate global to root
-                key = plugin if sect == "global" else "{}|{}|{}".format(plugin, category, sect)
+                key = plugin if sect == "global" else f"{plugin}|{category}|{sect}"
                 retval[key] = dict(helptext=None, options=OrderedDict())
 
                 for option, params in conf.defaults[section].items():
@@ -512,7 +513,7 @@ class DisplayArea(ttk.Frame):  # pylint:disable=too-many-ancestors
         subsections: list
             The full list of subsections ending on the required node
         """
-        labels = ["global"] if not subsections else subsections
+        labels = subsections or ["global"]
         self._vars["header"].set(" - ".join(sect.replace("_", " ").title() for sect in labels))
         self._set_display(section, subsections)
 
@@ -584,7 +585,7 @@ class DisplayArea(ttk.Frame):  # pylint:disable=too-many-ancestors
                             foreground=self._theme["link_color"],
                             cursor="hand2")
             lbl.pack(side=tk.TOP, fill=tk.X, padx=10, pady=(0, 5))
-            bind = "{}|{}".format(key, link)
+            bind = f"{key}|{link}"
             lbl.bind("<Button-1>", lambda e, l=bind: self._link_callback(l))
 
         return frame
@@ -649,11 +650,7 @@ class DisplayArea(ttk.Frame):  # pylint:disable=too-many-ancestors
         # Create a new config to pull through any defaults change
         new_config = ConfigParser(allow_no_value=True)
 
-        if "|" in selection:
-            lookup = ".".join(selection.split("|")[1:])
-        else:  # Expand global out from root node
-            lookup = "global"
-
+        lookup = ".".join(selection.split("|")[1:]) if "|" in selection else "global"
         if page_only and lookup not in config.config.sections():
             logger.info("No settings to save for the current page")
             return
@@ -673,7 +670,7 @@ class DisplayArea(ttk.Frame):  # pylint:disable=too-many-ancestors
                     # Get currently selected value
                     key = category
                     if section != "global":
-                        key += "|{}".format(section.replace(".", "|"))
+                        key += f'|{section.replace(".", "|")}'
                     new_opt = self._config_cpanel_dict[key]["options"][item].get()
                     logger.debug("Updating value to '%s' for %s",
                                  new_opt, ".".join([section, item]))
@@ -815,9 +812,7 @@ class _Presets():
 
         i = 0
         filename = f"{base_filename}.json"
-        while True:
-            if not os.path.exists(os.path.join(self._preset_path, filename)):
-                break
+        while os.path.exists(os.path.join(self._preset_path, filename)):
             logger.debug("File pre-exists: %s", filename)
             filename = f"{base_filename}_{i}.json"
             i += 1

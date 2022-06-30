@@ -36,7 +36,7 @@ class Model(OriginalModel):
         var_x = UpscaleBlock(self.encoder_dim, activation="leakyrelu")(var_x)
         var_x = UpscaleBlock(self.encoder_dim // 2, activation="leakyrelu")(var_x)
         var_x = UpscaleBlock(self.encoder_dim // 4, activation="leakyrelu")(var_x)
-        var_x = Conv2DOutput(3, 5, name="face_out_{}".format(side))(var_x)
+        var_x = Conv2DOutput(3, 5, name=f"face_out_{side}")(var_x)
         outputs = [var_x]
 
         if self.config.get("learn_mask", False):
@@ -44,6 +44,6 @@ class Model(OriginalModel):
             var_y = UpscaleBlock(self.encoder_dim, activation="leakyrelu")(var_y)
             var_y = UpscaleBlock(self.encoder_dim // 2, activation="leakyrelu")(var_y)
             var_y = UpscaleBlock(self.encoder_dim // 4, activation="leakyrelu")(var_y)
-            var_y = Conv2DOutput(1, 5, name="mask_out_{}".format(side))(var_y)
+            var_y = Conv2DOutput(1, 5, name=f"mask_out_{side}")(var_y)
             outputs.append(var_y)
-        return KerasModel(input_, outputs=outputs, name="decoder_{}".format(side))
+        return KerasModel(input_, outputs=outputs, name=f"decoder_{side}")

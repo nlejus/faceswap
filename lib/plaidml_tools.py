@@ -88,11 +88,10 @@ class PlaidMLStats():
     @property
     def names(self):
         """ list: The name of each GPU device that PlaidML has discovered. """
-        return ["{} - {} ({})".format(
-            device.get("vendor", "unknown"),
-            device.get("name", "unknown"),
-            "supported" if idx in self._supported_indices else "experimental")
-                for idx, device in enumerate(self._device_details)]
+        return [
+            f'{device.get("vendor", "unknown")} - {device.get("name", "unknown")} ({"supported" if idx in self._supported_indices else "experimental"})'
+            for idx, device in enumerate(self._device_details)
+        ]
 
     @property
     def _ids(self):
@@ -228,9 +227,8 @@ class PlaidMLStats():
             if _LOGGER:
                 _LOGGER.debug("Setting largest PlaidML device")
             self._set_largest_gpu()
-        else:
-            if _LOGGER:
-                _LOGGER.debug("Setting PlaidML devices from user_settings")
+        elif _LOGGER:
+            _LOGGER.debug("Setting PlaidML devices from user_settings")
 
     def _set_largest_gpu(self):
         """ Set the default GPU to be a supported device with the most available VRAM. If no
@@ -239,16 +237,20 @@ class PlaidMLStats():
         category = "supported" if self._supported_devices else "experimental"
         if _LOGGER:
             _LOGGER.debug("Obtaining largest %s device", category)
-        indices = getattr(self, "_{}_indices".format(category))
+        indices = getattr(self, f"_{category}_indices")
         if not indices:
             _LOGGER.error("Failed to automatically detect your GPU.")
             _LOGGER.error("Please run `plaidml-setup` to set up your GPU.")
             sys.exit(1)
-        max_vram = max([self.vram[idx] for idx in indices])
+        max_vram = max(self.vram[idx] for idx in indices)
         if _LOGGER:
             _LOGGER.debug("Max VRAM: %s", max_vram)
-        gpu_idx = min([idx for idx, vram in enumerate(self.vram)
-                       if vram == max_vram and idx in indices])
+        gpu_idx = min(
+            idx
+            for idx, vram in enumerate(self.vram)
+            if vram == max_vram and idx in indices
+        )
+
         if _LOGGER:
             _LOGGER.debug("GPU IDX: %s", gpu_idx)
 

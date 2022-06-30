@@ -106,11 +106,7 @@ class InstanceNormalization(Layer):
 
         self.input_spec = InputSpec(ndim=ndim)  # pylint:disable=attribute-defined-outside-init
 
-        if self.axis is None:
-            shape = (1,)
-        else:
-            shape = (input_shape[self.axis],)
-
+        shape = (1, ) if self.axis is None else (input_shape[self.axis], )
         if self.scale:
             self.gamma = self.add_weight(shape=shape,
                                          name="gamma",
@@ -129,7 +125,7 @@ class InstanceNormalization(Layer):
             self.beta = None
         self.built = True  # pylint:disable=attribute-defined-outside-init
 
-    def call(self, inputs, training=None):  # pylint:disable=arguments-differ,unused-argument
+    def call(self, inputs, training=None):    # pylint:disable=arguments-differ,unused-argument
         """This is where the layer's logic lives.
 
         Parameters
@@ -143,7 +139,7 @@ class InstanceNormalization(Layer):
             A tensor or list/tuple of tensors
         """
         input_shape = K.int_shape(inputs)
-        reduction_axes = list(range(0, len(input_shape)))
+        reduction_axes = list(range(len(input_shape)))
 
         if self.axis is not None:
             del reduction_axes[self.axis]
@@ -244,14 +240,22 @@ class AdaInstanceNormalization(Layer):
         """
         dim = input_shape[0][self.axis]
         if dim is None:
-            raise ValueError('Axis ' + str(self.axis) + ' of '
-                             'input tensor should have a defined dimension '
-                             'but the layer received an input with shape ' +
-                             str(input_shape[0]) + '.')
+            raise ValueError(
+                (
+                    (
+                        f'Axis {str(self.axis)}' + ' of '
+                        'input tensor should have a defined dimension '
+                        'but the layer received an input with shape '
+                    )
+                    + str(input_shape[0])
+                    + '.'
+                )
+            )
+
 
         super().build(input_shape)
 
-    def call(self, inputs, training=None):  # pylint:disable=unused-argument,arguments-differ
+    def call(self, inputs, training=None):    # pylint:disable=unused-argument,arguments-differ
         """This is where the layer's logic lives.
 
         Parameters
@@ -265,7 +269,7 @@ class AdaInstanceNormalization(Layer):
             A tensor or list/tuple of tensors
         """
         input_shape = K.int_shape(inputs[0])
-        reduction_axes = list(range(0, len(input_shape)))
+        reduction_axes = list(range(len(input_shape)))
 
         beta = inputs[1]
         gamma = inputs[2]
@@ -394,7 +398,7 @@ class GroupNormalization(Layer):
                                     name='beta')
         self.built = True  # pylint:disable=attribute-defined-outside-init
 
-    def call(self, inputs, mask=None):  # pylint:disable=unused-argument,arguments-differ
+    def call(self, inputs, mask=None):    # pylint:disable=unused-argument,arguments-differ
         """This is where the layer's logic lives.
 
         Parameters
@@ -408,7 +412,7 @@ class GroupNormalization(Layer):
             A tensor or list/tuple of tensors
         """
         input_shape = K.int_shape(inputs)
-        if len(input_shape) != 4 and len(input_shape) != 2:
+        if len(input_shape) not in [4, 2]:
             raise ValueError('Inputs should have rank ' +
                              str(4) + " or " + str(2) +
                              '; Received input shape:', str(input_shape))
@@ -458,7 +462,7 @@ class GroupNormalization(Layer):
                 retval = self.gamma * var_x + self.beta
 
         elif len(input_shape) == 2:
-            reduction_axes = list(range(0, len(input_shape)))
+            reduction_axes = list(range(len(input_shape)))
             del reduction_axes[0]
             batch_size, _ = input_shape
             if batch_size is None:

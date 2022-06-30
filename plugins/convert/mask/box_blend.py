@@ -23,7 +23,7 @@ class Mask(Adjustment):
     """
     def __init__(self, output_size, **kwargs):
         super().__init__("none", output_size, **kwargs)
-        self.mask = self._get_mask() if not self.skip else None
+        self.mask = None if self.skip else self._get_mask()
 
     def _get_mask(self):
         """ Create a mask to be used at the edges of the face box.

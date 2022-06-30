@@ -31,7 +31,7 @@ class Writer(Output):
         if frame_ranges is None:
             retval = list(range(1, total_count + 1))
         else:
-            retval = list()
+            retval = []
             for rng in frame_ranges:
                 retval.extend(list(range(rng[0], rng[1] + 1)))
         logger.debug("frame_order: %s", retval)
@@ -66,7 +66,10 @@ class Writer(Output):
             if not char.isdigit() and char not in ("_", "-"):
                 break
             idx -= 1
-        self.gif_file = os.path.join(self.output_folder, "{}_converted.gif".format(filename[:idx]))
+        self.gif_file = os.path.join(
+            self.output_folder, f"{filename[:idx]}_converted.gif"
+        )
+
         logger.info("Outputting to: '%s'", self.gif_file)
 
     def set_dimensions(self, frame_dims):

@@ -27,8 +27,7 @@ class Model(ModelBase):
 
         outputs = [self.decoder_a()(encoder_a), self.decoder_b()(encoder_b)]
 
-        autoencoder = KerasModel(inputs, outputs, name=self.name)
-        return autoencoder
+        return KerasModel(inputs, outputs, name=self.name)
 
     def encoder(self):
         """ Unbalanced Encoder """
@@ -135,6 +134,8 @@ class Model(ModelBase):
 
     def _legacy_mapping(self):
         """ The mapping of legacy separate model names to single model names """
-        return {"{}_encoder.h5".format(self.name): "encoder",
-                "{}_decoder_A.h5".format(self.name): "decoder_a",
-                "{}_decoder_B.h5".format(self.name): "decoder_b"}
+        return {
+            f"{self.name}_encoder.h5": "encoder",
+            f"{self.name}_decoder_A.h5": "decoder_a",
+            f"{self.name}_decoder_B.h5": "decoder_b",
+        }

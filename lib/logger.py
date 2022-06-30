@@ -85,11 +85,8 @@ class FaceswapFormatter(logging.Formatter):
         if self.usesTime():
             record.asctime = self.formatTime(record, self.datefmt)
         msg = self.formatMessage(record)
-        if record.exc_info:
-            # Cache the traceback text to avoid converting it multiple times
-            # (it's constant anyway)
-            if not record.exc_text:
-                record.exc_text = self.formatException(record.exc_info)
+        if record.exc_info and not record.exc_text:
+            record.exc_text = self.formatException(record.exc_info)
         if record.exc_text:
             if msg[-1:] != "\n":
                 msg = msg + "\n"
@@ -315,7 +312,7 @@ def get_loglevel(loglevel):
     """
     numeric_level = getattr(logging, loglevel.upper(), None)
     if not isinstance(numeric_level, int):
-        raise ValueError("Invalid log level: %s" % loglevel)
+        raise ValueError(f"Invalid log level: {loglevel}")
     return numeric_level
 
 
@@ -335,8 +332,8 @@ def crash_log():
     try:
         from lib.sysinfo import sysinfo  # pylint:disable=import-outside-toplevel
     except Exception:  # pylint:disable=broad-except
-        sysinfo = ("\n\nThere was an error importing System Information from lib.sysinfo. This is "
-                   "probably a bug which should be fixed:\n{}".format(traceback.format_exc()))
+        sysinfo = f"\n\nThere was an error importing System Information from lib.sysinfo. This is probably a bug which should be fixed:\n{traceback.format_exc()}"
+
     with open(filename, "wb") as outfile:
         outfile.writelines(freeze_log)
         outfile.write(original_traceback)
