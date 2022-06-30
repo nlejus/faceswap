@@ -51,7 +51,7 @@ class Train():  # pylint:disable=too-few-public-methods
         self._save_now = False
         self._toggle_preview_mask = False
         self._refresh_preview = False
-        self._preview_buffer = dict()
+        self._preview_buffer = {}
         self._lock = Lock()
 
         logger.debug("Initialized %s", self.__class__.__name__)
@@ -66,9 +66,9 @@ class Train():  # pylint:disable=too-few-public-methods
             for that side.
         """
         logger.debug("Getting image paths")
-        images = dict()
+        images = {}
         for side in ("a", "b"):
-            image_dir = getattr(self._args, "input_{}".format(side))
+            image_dir = getattr(self._args, f"input_{side}")
             if not os.path.isdir(image_dir):
                 logger.error("Error: '%s' does not exist", image_dir)
                 sys.exit(1)
@@ -78,7 +78,7 @@ class Train():  # pylint:disable=too-few-public-methods
                 logger.error("Error: '%s' contains no images", image_dir)
                 sys.exit(1)
             # Validate the first image is a detected face
-            test_image = next(img for img in images[side])
+            test_image = next(iter(images[side]))
             meta = read_image_meta(test_image)
             logger.debug("Test file: (filename: %s, metadata: %s)", test_image, meta)
             if "itxt" not in meta or "alignments" not in meta["itxt"]:
@@ -90,8 +90,11 @@ class Train():  # pylint:disable=too-few-public-methods
 
             logger.info("Model %s Directory: '%s' (%s images)",
                         side.upper(), image_dir, len(images[side]))
-        logger.debug("Got image paths: %s", [(key, str(len(val)) + " images")
-                                             for key, val in images.items()])
+        logger.debug(
+            "Got image paths: %s",
+            [(key, f"{len(val)} images") for key, val in images.items()],
+        )
+
         self._validate_image_counts(images)
         return images
 
@@ -147,26 +150,30 @@ class Train():  # pylint:disable=too-few-public-methods
         timelapse_output = str(get_folder(self._args.timelapse_output))
 
         for side in ("a", "b"):
-            folder = getattr(self._args, "timelapse_input_{}".format(side))
+            folder = getattr(self._args, f"timelapse_input_{side}")
             if folder is not None and not os.path.isdir(folder):
-                raise FaceswapError("The Timelapse path '{}' does not exist".format(folder))
+                raise FaceswapError(f"The Timelapse path '{folder}' does not exist")
 
-            training_folder = getattr(self._args, "input_{}".format(side))
+            training_folder = getattr(self._args, f"input_{side}")
             if folder == training_folder:
                 continue  # Time-lapse folder is training folder
 
             filenames = [fname for fname in os.listdir(folder)
                          if os.path.splitext(fname)[-1].lower() in _image_extensions]
             if not filenames:
-                raise FaceswapError("The Timelapse path '{}' does not contain any valid "
-                                    "images".format(folder))
+                raise FaceswapError(
+                    f"The Timelapse path '{folder}' does not contain any valid images"
+                )
+
 
             # Time-lapse images must appear in the training set, as we need access to alignment and
             # mask info. Check filenames are there to save failing much later in the process.
             training_images = [os.path.basename(img) for img in self._images[side]]
-            if not all(img in training_images for img in filenames):
-                raise FaceswapError("All images in the Timelapse folder '{}' must exist in the "
-                                    "training folder '{}'".format(folder, training_folder))
+            if any(img not in training_images for img in filenames):
+                raise FaceswapError(
+                    f"All images in the Timelapse folder '{folder}' must exist in the training folder '{training_folder}'"
+                )
+
 
         kwargs = {"input_a": self._args.timelapse_input_a,
                   "input_b": self._args.timelapse_input_b,
@@ -428,7 +435,7 @@ class Train():  # pylint:disable=too-few-public-methods
         if not self._args.preview:
             return True
 
-        if key_press == ord("\n") or key_press == ord("\r"):
+        if key_press in [ord("\n"), ord("\r")]:
             logger.debug("Exit requested")
             return False
 

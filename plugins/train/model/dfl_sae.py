@@ -33,7 +33,7 @@ class Model(ModelBase):
 
     def build_model(self, inputs):
         """ Build the DFL-SAE Model """
-        encoder = getattr(self, "encoder_{}".format(self.architecture))()
+        encoder = getattr(self, f"encoder_{self.architecture}")()
         enc_output_shape = encoder.output_shape[1:]
         encoder_a = encoder(inputs[0])
         encoder_b = encoder(inputs[1])
@@ -51,10 +51,7 @@ class Model(ModelBase):
         else:
             outputs = [self.decoder("a", enc_output_shape)(encoder_a),
                        self.decoder("b", enc_output_shape)(encoder_b)]
-        autoencoder = KerasModel(inputs,
-                                 outputs,
-                                 name="{}_{}".format(self.name, self.architecture))
-        return autoencoder
+        return KerasModel(inputs, outputs, name=f"{self.name}_{self.architecture}")
 
     def encoder_df(self):
         """ DFL SAE DF Encoder Network"""
@@ -91,7 +88,7 @@ class Model(ModelBase):
         var_x = Dense(lowest_dense_res * lowest_dense_res * self.ae_dims * 2)(var_x)
         var_x = Reshape((lowest_dense_res, lowest_dense_res, self.ae_dims * 2))(var_x)
         var_x = UpscaleBlock(self.ae_dims * 2, activation="leakyrelu")(var_x)
-        return KerasModel(input_, var_x, name="intermediate_{}".format(side))
+        return KerasModel(input_, var_x, name=f"intermediate_{side}")
 
     def decoder(self, side, input_shape):
         """ DFL SAE Decoder Network"""
@@ -106,38 +103,45 @@ class Model(ModelBase):
         var_x1 = ResidualBlock(dims * 8)(var_x1)
         var_x1 = ResidualBlock(dims * 8)(var_x1)
         if self.multiscale_count >= 3:
-            outputs.append(Conv2DOutput(3, 5, name="face_out_32_{}".format(side))(var_x1))
+            outputs.append(Conv2DOutput(3, 5, name=f"face_out_32_{side}")(var_x1))
 
         var_x2 = UpscaleBlock(dims * 4, activation=None)(var_x1)
         var_x2 = LeakyReLU(alpha=0.2)(var_x2)
         var_x2 = ResidualBlock(dims * 4)(var_x2)
         var_x2 = ResidualBlock(dims * 4)(var_x2)
         if self.multiscale_count >= 2:
-            outputs.append(Conv2DOutput(3, 5, name="face_out_64_{}".format(side))(var_x2))
+            outputs.append(Conv2DOutput(3, 5, name=f"face_out_64_{side}")(var_x2))
 
         var_x3 = UpscaleBlock(dims * 2, activation=None)(var_x2)
         var_x3 = LeakyReLU(alpha=0.2)(var_x3)
         var_x3 = ResidualBlock(dims * 2)(var_x3)
         var_x3 = ResidualBlock(dims * 2)(var_x3)
 
-        outputs.append(Conv2DOutput(3, 5, name="face_out_128_{}".format(side))(var_x3))
+        outputs.append(Conv2DOutput(3, 5, name=f"face_out_128_{side}")(var_x3))
 
         if self.use_mask:
             var_y = input_
             var_y = UpscaleBlock(self.decoder_dim * 8, activation="leakyrelu")(var_y)
             var_y = UpscaleBlock(self.decoder_dim * 4, activation="leakyrelu")(var_y)
             var_y = UpscaleBlock(self.decoder_dim * 2, activation="leakyrelu")(var_y)
-            var_y = Conv2DOutput(1, 5, name="mask_out_{}".format(side))(var_y)
+            var_y = Conv2DOutput(1, 5, name=f"mask_out_{side}")(var_y)
             outputs.append(var_y)
-        return KerasModel(input_, outputs=outputs, name="decoder_{}".format(side))
+        return KerasModel(input_, outputs=outputs, name=f"decoder_{side}")
 
     def _legacy_mapping(self):
         """ The mapping of legacy separate model names to single model names """
-        mappings = dict(df={"{}_encoder.h5".format(self.name): "encoder_df",
-                            "{}_decoder_A.h5".format(self.name): "decoder_a",
-                            "{}_decoder_B.h5".format(self.name): "decoder_b"},
-                        liae={"{}_encoder.h5".format(self.name): "encoder_liae",
-                              "{}_intermediate_B.h5".format(self.name): "intermediate_both",
-                              "{}_intermediate.h5".format(self.name): "intermediate_b",
-                              "{}_decoder.h5".format(self.name): "decoder_both"})
+        mappings = dict(
+            df={
+                f"{self.name}_encoder.h5": "encoder_df",
+                f"{self.name}_decoder_A.h5": "decoder_a",
+                f"{self.name}_decoder_B.h5": "decoder_b",
+            },
+            liae={
+                f"{self.name}_encoder.h5": "encoder_liae",
+                f"{self.name}_intermediate_B.h5": "intermediate_both",
+                f"{self.name}_intermediate.h5": "intermediate_b",
+                f"{self.name}_decoder.h5": "decoder_both",
+            },
+        )
+
         return mappings[self.config["architecture"]]

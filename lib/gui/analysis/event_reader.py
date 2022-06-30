@@ -43,7 +43,7 @@ class _LogFiles():
             The full path of each log file for each training session id that has been run
         """
         logger.debug("Loading log filenames. base_dir: '%s'", self._logs_folder)
-        retval = dict()
+        retval = {}
         for dirpath, _, filenames in os.walk(self._logs_folder):
             if not any(filename.startswith("events.out.tfevents") for filename in filenames):
                 continue
@@ -72,7 +72,7 @@ class _LogFiles():
         """
         session = os.path.split(os.path.split(folder)[0])[1]
         session_id = session[session.rfind("_") + 1:]
-        retval = None if not session_id.isdigit() else int(session_id)
+        retval = int(session_id) if session_id.isdigit() else None
         logger.debug("folder: '%s', session_id: %s", folder, retval)
         return retval
 
@@ -133,7 +133,7 @@ class _Cache():
     def __init__(self, session_ids):
         logger.debug("Initializing: %s: (session_ids: %s)", self.__class__.__name__, session_ids)
         self._data = {idx: None for idx in session_ids}
-        self._carry_over = dict()
+        self._carry_over = {}
         self._loss_labels = []
         logger.debug("Initialized: %s", self.__class__.__name__)
 
@@ -267,8 +267,8 @@ class _Cache():
 
         if len(loss[-1]) != len(self._loss_labels):
             logger.debug("Truncated loss found. loss count: %s", len(loss))
-            idx = sorted(data)[-1]
             if is_live:
+                idx = sorted(data)[-1]
                 logger.debug("Setting carried over data: %s", data[idx])
                 self._carry_over[idx] = data[idx]
             logger.debug("Removing truncated loss: (timestamp: %s, loss: %s)",
@@ -334,7 +334,7 @@ class _Cache():
 
         dtype = "float32" if metric == "loss" else "float64"
 
-        retval = dict()
+        retval = {}
         for idx, data in raw.items():
             val = {metric: np.frombuffer(zlib.decompress(data[metric]),
                                          dtype=dtype).reshape(data[f"{metric}_shape"])}
@@ -461,7 +461,7 @@ class TensorBoardLogs():
             and list of loss values for each step
         """
         logger.debug("Getting loss: (session_id: %s)", session_id)
-        retval = dict()
+        retval = {}
         for idx in [session_id] if session_id else self.session_ids:
             self._check_cache(idx)
             data = self._cache.get_data(idx, "loss")
@@ -493,7 +493,7 @@ class TensorBoardLogs():
 
         logger.debug("Getting timestamps: (session_id: %s, is_training: %s)",
                      session_id, self._is_training)
-        retval = dict()
+        retval = {}
         for idx in [session_id] if session_id else self.session_ids:
             self._check_cache(idx)
             data = self._cache.get_data(idx, "timestamps")
@@ -565,7 +565,7 @@ class _EventParser():  # pylint:disable=too-few-public-methods
         session_id: int
             The session id that the data is being cached for
         """
-        data = dict()
+        data = {}
         try:
             for record in self._iterator:
                 event = event_pb2.Event.FromString(record)  # pylint:disable=no-member

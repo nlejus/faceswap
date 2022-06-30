@@ -4,6 +4,7 @@
 Adapted from Keras tests.
 """
 
+
 import pytest
 import numpy as np
 from numpy.testing import assert_allclose
@@ -25,7 +26,7 @@ _PARAMS = [(losses.GeneralizedLoss(), (2, 16, 16)),
            # TODO Make sure these output dimensions are correct
            (losses.LInfNorm(), (2, 1, 1))]
 _IDS = ["GeneralizedLoss", "GradientLoss", "GMSDLoss", "LInfNorm"]
-_IDS = ["{}[{}]".format(loss, get_backend().upper()) for loss in _IDS]
+_IDS = [f"{loss}[{get_backend().upper()}]" for loss in _IDS]
 
 
 @pytest.mark.parametrize(["loss_func", "output_shape"], _PARAMS, ids=_IDS)
@@ -48,7 +49,7 @@ _LWPARAMS = [losses.GeneralizedLoss(), losses.GradientLoss(), losses.GMSDLoss(),
              k_losses.logcosh, losses.DSSIMObjective()]
 _LWIDS = ["GeneralizedLoss", "GradientLoss", "GMSDLoss", "LInfNorm", "mae", "mse", "logcosh",
           "DSSIMObjective"]
-_LWIDS = ["{}[{}]".format(loss, get_backend().upper()) for loss in _LWIDS]
+_LWIDS = [f"{loss}[{get_backend().upper()}]" for loss in _LWIDS]
 
 
 @pytest.mark.parametrize("loss_func", _LWPARAMS, ids=_LWIDS)

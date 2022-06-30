@@ -145,7 +145,7 @@ class FileHandler():  # pylint:disable=too-few-public-methods
                                         command,
                                         action,
                                         variable)
-        self.return_file = getattr(self, "_{}".format(self._handletype.lower()))()
+        self.return_file = getattr(self, f"_{self._handletype.lower()}")()
         logger.debug("Initialized %s", self.__class__.__name__)
 
     @property
@@ -182,12 +182,15 @@ class FileHandler():  # pylint:disable=too-few-public-methods
         # Add in multi-select options and upper case extensions for Linux
         for key in filetypes:
             if platform.system() == "Linux":
-                filetypes[key] = [item
-                                  if item[0] == "All files"
-                                  else (item[0], "{} {}".format(item[1], item[1].upper()))
-                                  for item in filetypes[key]]
+                filetypes[key] = [
+                    item
+                    if item[0] == "All files"
+                    else (item[0], f"{item[1]} {item[1].upper()}")
+                    for item in filetypes[key]
+                ]
+
             if len(filetypes[key]) > 2:
-                multi = ["{} Files".format(key.title())]
+                multi = [f"{key.title()} Files"]
                 multi.append(" ".join([ftype[1]
                                        for ftype in filetypes[key] if ftype[0] != "All files"]))
                 filetypes[key].insert(0, tuple(multi))
@@ -223,8 +226,11 @@ class FileHandler():  # pylint:disable=too-few-public-methods
         dict:
             The default file extension for each file type
         """
-        defaults = {key: next(ext for ext in val[0][1].split(" ")).replace("*", "")
-                    for key, val in self._filetypes.items()}
+        defaults = {
+            key: next(iter(val[0][1].split(" "))).replace("*", "")
+            for key, val in self._filetypes.items()
+        }
+
         defaults["default"] = None
         defaults["video"] = ".mp4"
         defaults["image"] = ".png"
@@ -264,7 +270,7 @@ class FileHandler():  # pylint:disable=too-few-public-methods
         logger.debug("Setting Kwargs: (title: %s, initial_folder: %s, initial_file: '%s', "
                      "file_type: '%s', command: '%s': action: '%s', variable: '%s')",
                      title, initial_folder, initial_file, file_type, command, action, variable)
-        kwargs = dict()
+        kwargs = {}
         if self._handletype.lower() == "context":
             self._set_context_handletype(command, action, variable)
 
@@ -361,7 +367,7 @@ class Images():
         self._pathpreview = os.path.join(PATHCACHE, "preview")
         self._pathoutput = None
         self._previewoutput = None
-        self._previewtrain = dict()
+        self._previewtrain = {}
         self._previewcache = dict(modified=None,  # cache for extract and convert
                                   images=None,
                                   filenames=list(),
@@ -420,7 +426,7 @@ class Images():
         """
         size = get_config().user_config_dict.get("icon_size", 16)
         size = int(round(size * get_config().scaling_factor))
-        icons = dict()
+        icons = {}
         pathicons = os.path.join(PATHCACHE, "icons")
         for fname in os.listdir(pathicons):
             name, ext = os.path.splitext(fname)
@@ -470,7 +476,7 @@ class Images():
         logger.debug("Clearing image cache")
         self._pathoutput = None
         self._previewoutput = None
-        self._previewtrain = dict()
+        self._previewtrain = {}
         self._previewcache = dict(modified=None,  # cache for extract and convert
                                   images=None,
                                   filenames=list(),
@@ -569,7 +575,7 @@ class Images():
         if not retval:
             logger.debug("No new images in output folder")
         else:
-            self._previewcache["modified"] = max([os.path.getmtime(img) for img in retval])
+            self._previewcache["modified"] = max(os.path.getmtime(img) for img in retval)
             logger.debug("Number new images: %s, Last Modified: %s",
                          len(retval), self._previewcache["modified"])
         return retval
@@ -600,10 +606,10 @@ class Images():
         logger.debug("num_images: %s", num_images)
         if num_images == 0:
             return False
-        samples = list()
+        samples = []
         start_idx = len(image_files) - num_images if len(image_files) > num_images else 0
         show_files = sorted(image_files, key=os.path.getctime)[start_idx:]
-        dropped_files = list()
+        dropped_files = []
         for fname in show_files:
             try:
                 img = Image.open(fname)
@@ -724,7 +730,7 @@ class Images():
         modified = None
         if not image_files:
             logger.debug("No preview to display")
-            self._previewtrain = dict()
+            self._previewtrain = {}
             return
         for img in image_files:
             modified = os.path.getmtime(img) if modified is None else modified
@@ -747,7 +753,7 @@ class Images():
                     self._errcount += 1
                 else:
                     logger.error("Error reading the preview file for '%s'", img)
-                    print("Error reading the preview file for {}".format(name))
+                    print(f"Error reading the preview file for {name}")
                     self._previewtrain[name] = None
 
     def _get_current_size(self, name):
@@ -805,7 +811,7 @@ class Images():
             # Hacky fix to force a reload if it happens to find corrupted
             # data, probably due to reading the image whilst it is partially
             # saved. If it continues to fail, then eventually raise.
-            for i in range(0, 1000):
+            for i in range(1000):
                 try:
                     displayimg = displayimg.resize(size, Image.ANTIALIAS)
                 except OSError:
@@ -1117,8 +1123,7 @@ class Config():
         text: str, optional
             Additional text to be appended to the GUI title bar. Default: ``None``
         """
-        title = "Faceswap.py"
-        title += " - {}".format(text) if text is not None and text else ""
+        title = "Faceswap.py" + (f" - {text}" if text is not None and text else "")
         self.root.title(title)
 
     def set_geometry(self, width, height, fullscreen=False):
@@ -1146,8 +1151,10 @@ class Config():
         elif fullscreen:
             self.root.attributes('-zoomed', True)
         else:
-            self.root.geometry("{}x{}+80+80".format(str(initial_dimensions[0]),
-                                                    str(initial_dimensions[1])))
+            self.root.geometry(
+                f"{str(initial_dimensions[0])}x{str(initial_dimensions[1])}+80+80"
+            )
+
         logger.debug("Geometry: %sx%s", *initial_dimensions)
 
 

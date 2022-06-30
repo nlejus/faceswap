@@ -195,8 +195,9 @@ class DSSIMObjective():
         padding = self._preprocess_padding(padding)
         if data_format == 'channels_first':
             input_tensor = K.permute_dimensions(input_tensor, (0, 2, 3, 1))
-        patches = extract_image_patches(input_tensor, kernel, strides, [1, 1, 1, 1], padding)
-        return patches
+        return extract_image_patches(
+            input_tensor, kernel, strides, [1, 1, 1, 1], padding
+        )
 
 
 class GeneralizedLoss():  # pylint:disable=too-few-public-methods
@@ -268,8 +269,7 @@ class LInfNorm():  # pylint:disable=too-few-public-methods
         """
         diff = K.abs(y_true - y_pred)
         max_loss = K.max(diff, axis=(1, 2), keepdims=True)
-        loss = K.mean(max_loss, axis=-1)
-        return loss
+        return K.mean(max_loss, axis=-1)
 
 
 class GradientLoss():  # pylint:disable=too-few-public-methods
@@ -312,7 +312,7 @@ class GradientLoss():  # pylint:disable=too-few-public-methods
                               self.generalized_loss(self._diff_yy(y_true), self._diff_yy(y_pred)) +
                               self.generalized_loss(self._diff_xy(y_true), self._diff_xy(y_pred))
                               * 2.)
-        loss = loss / (tv_weight + tv2_weight)
+        loss /= tv_weight + tv2_weight
         # TODO simplify to use MSE instead
         return loss
 
@@ -420,16 +420,6 @@ class GMSDLoss():  # pylint:disable=too-few-public-methods
         """
         raise FaceswapError("GMSD Loss is not currently compatible with PlaidML. Please select a "
                             "different Loss method.")
-
-        true_edge = self._scharr_edges(y_true, True)
-        pred_edge = self._scharr_edges(y_pred, True)
-        ephsilon = 0.0025
-        upper = 2.0 * true_edge * pred_edge
-        lower = K.square(true_edge) + K.square(pred_edge)
-        gms = (upper + ephsilon) / (lower + ephsilon)
-        gmsd = K.std(gms, axis=(1, 2, 3), keepdims=True)
-        gmsd = K.squeeze(gmsd, axis=-1)
-        return gmsd
 
     @classmethod
     def _scharr_edges(cls, image, magnitude):

@@ -28,8 +28,7 @@ class Model(ModelBase):
         outputs = [decoder(Concatenate()([inter_a(encoder_a), inter_both(encoder_a)])),
                    decoder(Concatenate()([inter_b(encoder_b), inter_both(encoder_b)]))]
 
-        autoencoder = KerasModel(inputs, outputs, name=self.name)
-        return autoencoder
+        return KerasModel(inputs, outputs, name=self.name)
 
     def encoder(self):
         """ Encoder Network """
@@ -48,7 +47,7 @@ class Model(ModelBase):
         var_x = Dense(self.encoder_dim)(input_)
         var_x = Dense(4 * 4 * int(self.encoder_dim/2))(var_x)
         var_x = Reshape((4, 4, int(self.encoder_dim/2)))(var_x)
-        return KerasModel(input_, var_x, name="inter_{}".format(side))
+        return KerasModel(input_, var_x, name=f"inter_{side}")
 
     def decoder(self):
         """ Decoder Network """
@@ -73,8 +72,10 @@ class Model(ModelBase):
 
     def _legacy_mapping(self):
         """ The mapping of legacy separate model names to single model names """
-        return {"{}_encoder.h5".format(self.name): "encoder",
-                "{}_intermediate_A.h5".format(self.name): "inter_a",
-                "{}_intermediate_B.h5".format(self.name): "inter_b",
-                "{}_inter.h5".format(self.name): "inter_both",
-                "{}_decoder.h5".format(self.name): "decoder"}
+        return {
+            f"{self.name}_encoder.h5": "encoder",
+            f"{self.name}_intermediate_A.h5": "inter_a",
+            f"{self.name}_intermediate_B.h5": "inter_b",
+            f"{self.name}_inter.h5": "inter_both",
+            f"{self.name}_decoder.h5": "decoder",
+        }

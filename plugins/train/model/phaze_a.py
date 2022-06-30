@@ -264,8 +264,7 @@ class Model(ModelBase):
 
         # Create Autoencoder
         outputs = [decoders["a"], decoders["b"]]
-        autoencoder = KerasModel(inputs, outputs, name=self.name)
-        return autoencoder
+        return KerasModel(inputs, outputs, name=self.name)
 
     def _build_encoders(self, inputs):
         """ Build the encoders for Phaze-A
@@ -562,11 +561,12 @@ class Encoder():  # pylint:disable=too-few-public-methods
         resize the input for this model
         """
         default_size = self._selected_model.get("default_size")
-        if self._config["enc_load_weights"] and self._selected_model.get("enforce_for_weights"):
-            retval = (default_size, default_size, 3)
-        else:
-            retval = self._input_shape
-        return retval
+        return (
+            (default_size, default_size, 3)
+            if self._config["enc_load_weights"]
+            and self._selected_model.get("enforce_for_weights")
+            else self._input_shape
+        )
 
     def __call__(self):
         """ Create the Phaze-A Encoder Model.
@@ -582,8 +582,7 @@ class Encoder():  # pylint:disable=too-few-public-methods
         if self._input_shape != self._model_input_shape:
             var_x = self._resize_inputs(var_x)
 
-        scaling = self._selected_model.get("scaling")
-        if scaling:
+        if scaling := self._selected_model.get("scaling"):
             #  Some models expect different scaling.
             logger.debug("Scaling to %s for '%s'", scaling, self._config["enc_architecture"])
             if scaling == (0, 255):
@@ -639,15 +638,13 @@ class Encoder():  # pylint:disable=too-few-public-methods
         :class:`keras.Model`
             The selected keras model for the chosen encoder architecture
         """
-        if self._selected_model.get("keras_name"):
-            kwargs = self._selected_model["kwargs"]
-            kwargs["input_shape"] = self._model_input_shape
-            kwargs["include_top"] = False
-            kwargs["weights"] = "imagenet" if self._config["enc_load_weights"] else None
-            retval = getattr(kapp, self._selected_model["keras_name"])(**kwargs)
-        else:
-            retval = _EncoderFaceswap(self._config)
-        return retval
+        if not self._selected_model.get("keras_name"):
+            return _EncoderFaceswap(self._config)
+        kwargs = self._selected_model["kwargs"]
+        kwargs["input_shape"] = self._model_input_shape
+        kwargs["include_top"] = False
+        kwargs["weights"] = "imagenet" if self._config["enc_load_weights"] else None
+        return getattr(kapp, self._selected_model["keras_name"])(**kwargs)
 
 
 class _EncoderFaceswap():  # pylint:disable=too-few-public-methods
@@ -800,7 +797,7 @@ class FullyConnected():  # pylint:disable=too-few-public-methods
                 if self._config["fc_upsampler"].lower() == "upsample2d":
                     var_x = LeakyReLU(alpha=0.1)(var_x)
 
-        return KerasModel(input_, var_x, name="fc_{}".format(self._side))
+        return KerasModel(input_, var_x, name=f"fc_{self._side}")
 
 
 class GBlock():  # pylint:disable=too-few-public-methods
@@ -1024,4 +1021,4 @@ class Decoder():  # pylint:disable=too-few-public-methods
                                         self._config["dec_output_kernel"],
                                         name="mask_out")(var_y))
 
-        return KerasModel(inputs, outputs=outputs, name="decoder_{}".format(self._side))
+        return KerasModel(inputs, outputs=outputs, name=f"decoder_{self._side}")

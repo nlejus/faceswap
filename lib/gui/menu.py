@@ -158,7 +158,7 @@ class FileMenu(tk.Menu):  # pylint:disable=too-many-ancestors
                 removed_files.append(recent_item)
                 continue
             # Legacy project files didn't have a command stored
-            command = command if command else "project"
+            command = command or "project"
             logger.debug("processing: ('%s', %s)", filename, command)
             if command.lower() == "project":
                 load_func = self._config.project.load
@@ -166,11 +166,13 @@ class FileMenu(tk.Menu):  # pylint:disable=too-many-ancestors
                 kwargs = dict(filename=filename)
             else:
                 load_func = self._config.tasks.load
-                lbl = "{} Task".format(command)
+                lbl = f"{command} Task"
                 kwargs = dict(filename=filename, current_tab=False)
             self.recent_menu.add_command(
-                label="{} ({})".format(filename, lbl.title()),
-                command=lambda kw=kwargs, fn=load_func: fn(**kw))
+                label=f"{filename} ({lbl.title()})",
+                command=lambda kw=kwargs, fn=load_func: fn(**kw),
+            )
+
         if removed_files:
             for recent_item in removed_files:
                 logger.debug("Removing from recent files: `%s`", recent_item[0])
@@ -315,7 +317,7 @@ class HelpMenu(tk.Menu):  # pylint:disable=too-many-ancestors
             The branch to switch to
         """
         logger.info("Switching branch to '%s'...", branch)
-        gitcmd = "git checkout {}".format(branch)
+        gitcmd = f"git checkout {branch}"
         cmd = Popen(gitcmd, shell=True, stdout=PIPE, stderr=STDOUT, cwd=_WORKING_DIR)
         stdout, _ = cmd.communicate()
         retcode = cmd.poll()
@@ -358,7 +360,7 @@ class HelpMenu(tk.Menu):  # pylint:disable=too-many-ancestors
             from lib.sysinfo import sysinfo  # pylint:disable=import-outside-toplevel
             info = sysinfo
         except Exception as err:  # pylint:disable=broad-except
-            info = "Error obtaining system info: {}".format(str(err))
+            info = f"Error obtaining system info: {str(err)}"
         self.clear_console()
         logger.debug("Obtained system information: %s", info)
         print(info)
@@ -437,12 +439,10 @@ class HelpMenu(tk.Menu):  # pylint:disable=too-many-ancestors
                 print(output.strip())
         retcode = cmd.poll()
         logger.debug("'%s' returncode: %s", gitcmd, retcode)
-        if retcode != 0:
-            logger.info("An error occurred during update. return code: %s", retcode)
-            retval = False
-        else:
-            retval = True
-        return retval
+        if retcode == 0:
+            return True
+        logger.info("An error occurred during update. return code: %s", retcode)
+        return False
 
 
 class TaskBar(ttk.Frame):  # pylint: disable=too-many-ancestors
@@ -482,7 +482,7 @@ class TaskBar(ttk.Frame):  # pylint: disable=too-many-ancestors
         frame.pack(side=tk.LEFT, anchor=tk.W, expand=False, padx=2)
 
         for loadtype in ("load", "save", "save_as", "clear", "reload"):
-            btntype = "{}2".format(loadtype)
+            btntype = f"{loadtype}2"
             logger.debug("Adding button: '%s'", btntype)
 
             loader, kwargs = self._loader_and_kwargs(loadtype)
@@ -507,7 +507,7 @@ class TaskBar(ttk.Frame):  # pylint: disable=too-many-ancestors
             kwargs = dict(save_as=True)
         else:
             loader = btntype
-            kwargs = dict()
+            kwargs = {}
         logger.debug("btntype: %s, loader: %s, kwargs: %s", btntype, loader, kwargs)
         return loader, kwargs
 
@@ -516,7 +516,7 @@ class TaskBar(ttk.Frame):  # pylint: disable=too-many-ancestors
         frame = ttk.Frame(self._btn_frame)
         frame.pack(side=tk.LEFT, anchor=tk.W, expand=False, padx=2)
         for name in ("extract", "train", "convert"):
-            btntype = "settings_{}".format(name)
+            btntype = f"settings_{name}"
             btntype = btntype if btntype in get_images().icons else "settings"
             logger.debug("Adding button: '%s'", btntype)
             btn = ttk.Button(

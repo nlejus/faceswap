@@ -193,8 +193,9 @@ class DSSIMObjective(tf.keras.losses.Loss):
         padding = self._preprocess_padding(padding)
         if data_format == 'channels_first':
             input_tensor = K.permute_dimensions(input_tensor, (0, 2, 3, 1))
-        patches = tf.image.extract_patches(input_tensor, kernel, strides, [1, 1, 1, 1], padding)
-        return patches
+        return tf.image.extract_patches(
+            input_tensor, kernel, strides, [1, 1, 1, 1], padding
+        )
 
 
 class GeneralizedLoss(tf.keras.losses.Loss):
@@ -267,8 +268,7 @@ class LInfNorm(tf.keras.losses.Loss):
         """
         diff = K.abs(y_true - y_pred)
         max_loss = K.max(diff, axis=(1, 2), keepdims=True)
-        loss = K.mean(max_loss, axis=-1)
-        return loss
+        return K.mean(max_loss, axis=-1)
 
 
 class GradientLoss(tf.keras.losses.Loss):
@@ -312,7 +312,7 @@ class GradientLoss(tf.keras.losses.Loss):
                               self.generalized_loss(self._diff_yy(y_true), self._diff_yy(y_pred)) +
                               self.generalized_loss(self._diff_xy(y_true), self._diff_xy(y_pred))
                               * 2.)
-        loss = loss / (tv_weight + tv2_weight)
+        loss /= tv_weight + tv2_weight
         # TODO simplify to use MSE instead
         return loss
 

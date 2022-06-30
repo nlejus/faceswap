@@ -27,8 +27,11 @@ class Config(FaceswapConfig):
         """ Set the global options for training """
         logger.debug("Setting global config")
         section = "global"
-        self.add_section(title=section,
-                         info="Options that apply to all models" + ADDITIONAL_INFO)
+        self.add_section(
+            title=section,
+            info=f"Options that apply to all models{ADDITIONAL_INFO}",
+        )
+
         self.add_item(
             section=section,
             title="centering",

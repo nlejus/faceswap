@@ -258,9 +258,8 @@ class ModelBase():
             return
 
         if len(multiple_models) == 1:
-            msg = ("You have requested to train with the '{}' plugin, but a model file for the "
-                   "'{}' plugin already exists in the folder '{}'.\nPlease select a different "
-                   "model folder.".format(self.name, multiple_models[0], self.model_dir))
+            msg = f"You have requested to train with the '{self.name}' plugin, but a model file for the '{multiple_models[0]}' plugin already exists in the folder '{self.model_dir}'.\nPlease select a different model folder."
+
         else:
             msg = ("There are multiple plugin types ('{}') stored in the model folder '{}'. This "
                    "is not supported.\nPlease split the model files into their own folders before "
@@ -305,11 +304,12 @@ class ModelBase():
         if not all(os.path.isfile(os.path.join(self.model_dir, fname))
                    for fname in self._legacy_mapping()):
             return
-        archive_dir = "{}_TF1_Archived".format(self.model_dir)
+        archive_dir = f"{self.model_dir}_TF1_Archived"
         if os.path.exists(archive_dir):
-            raise FaceswapError("We need to update your model files for use with Tensorflow 2.x, "
-                                "but the archive folder already exists. Please remove the "
-                                "following folder to continue: '{}'".format(archive_dir))
+            raise FaceswapError(
+                f"We need to update your model files for use with Tensorflow 2.x, but the archive folder already exists. Please remove the following folder to continue: '{archive_dir}'"
+            )
+
 
         logger.info("Updating legacy models for Tensorflow 2.x")
         logger.info("Your Tensorflow 1.x models will be archived in the following location: '%s'",
@@ -341,9 +341,12 @@ class ModelBase():
     def _validate_input_shape(self):
         """ Validate that the input shape is either a single shape tuple of 3 dimensions or
         a list of 2 shape tuples of 3 dimensions. """
-        assert len(self.input_shape) in (2, 3), "Input shape should either be a single 3 " \
-            "dimensional shape tuple for use in both sides of the model, or a list of 2 3 " \
+        assert len(self.input_shape) in {2, 3}, (
+            "Input shape should either be a single 3 "
+            "dimensional shape tuple for use in both sides of the model, or a list of 2 3 "
             "dimensional shape tuples for use in the 'A' and 'B' sides of the model"
+        )
+
         if len(self.input_shape) == 2:
             assert [len(shape) == 3 for shape in self.input_shape], "All input shapes should " \
                 "have 3 dimensions"
@@ -365,8 +368,11 @@ class ModelBase():
             input_shapes = [self.input_shape, self.input_shape]
         else:
             input_shapes = self.input_shape
-        inputs = [Input(shape=shape, name="face_in_{}".format(side))
-                  for side, shape in zip(("a", "b"), input_shapes)]
+        inputs = [
+            Input(shape=shape, name=f"face_in_{side}")
+            for side, shape in zip(("a", "b"), input_shapes)
+        ]
+
         logger.debug("inputs: %s", inputs)
         return inputs
 
@@ -444,7 +450,7 @@ class ModelBase():
         seen = {name: 0 for name in set(self._model.output_names)}
         new_names = []
         for name in self._model.output_names:
-            new_names.append("{}_{}".format(name, seen[name]))
+            new_names.append(f"{name}_{seen[name]}")
             seen[name] += 1
         logger.debug("Output names rewritten: (old: %s, new: %s)",
                      self._model.output_names, new_names)
@@ -504,7 +510,7 @@ class _IO():
     @property
     def _filename(self):
         """str: The filename for this model."""
-        return os.path.join(self._model_dir, "{}.h5".format(self._plugin.name))
+        return os.path.join(self._model_dir, f"{self._plugin.name}.h5")
 
     @property
     def model_exists(self):
@@ -527,8 +533,8 @@ class _IO():
                    for fname in os.listdir(self._model_dir)
                    if fname.endswith(".h5")]
         test_names = plugins + [self._plugin.name]
-        test = False if not test_names else os.path.commonprefix(test_names) == ""
-        retval = None if not test else plugins
+        test = os.path.commonprefix(test_names) == "" if test_names else False
+        retval = plugins if test else None
         logger.debug("plugin name: %s, plugins: %s, test result: %s, retval: %s",
                      self._plugin.name, plugins, test, retval)
         return retval
@@ -601,13 +607,13 @@ class _IO():
         if save_averages:
             lossmsg = ["face_{}: {:.5f}".format(side, avg)
                        for side, avg in zip(("a", "b"), save_averages)]
-            msg += " - Average loss since last save: {}".format(", ".join(lossmsg))
+            msg += f' - Average loss since last save: {", ".join(lossmsg)}'
         logger.info(msg)
 
     def _get_save_averages(self):
         """ Return the average loss since the last save iteration and reset historical loss """
         logger.debug("Getting save averages")
-        if not all(loss for loss in self._history):
+        if not all(self._history):
             logger.debug("No loss in history")
             retval = []
         else:
@@ -644,7 +650,7 @@ class _IO():
 
         if backup:  # Update lowest loss values to the state file
             # pylint:disable=unnecessary-comprehension
-            old_avgs = {key: val for key, val in self._plugin.state.lowest_avg_loss.items()}
+            old_avgs = dict(self._plugin.state.lowest_avg_loss.items())
             self._plugin.state.lowest_avg_loss["a"] = save_averages[0]
             self._plugin.state.lowest_avg_loss["b"] = save_averages[1]
             logger.debug("Updated lowest historical save iteration averages from: %s to: %s",
@@ -708,7 +714,10 @@ class _Settings():
         self._use_mixed_precision = self._set_keras_mixed_precision(use_mixed_precision,
                                                                     bool(arguments.exclude_gpus))
 
-        distributed = False if not hasattr(arguments, "distributed") else arguments.distributed
+        distributed = (
+            arguments.distributed if hasattr(arguments, "distributed") else False
+        )
+
         self._strategy = self._get_strategy(distributed)
         logger.debug("Initialized %s", self.__class__.__name__)
 
@@ -904,8 +913,8 @@ class _Weights():
 
         freeze_layers = plugin.config.get("freeze_layers")  # Standardized config for freezing
         load_layers = plugin.config.get("loading_layers")  # Standardized config for loading
-        self._freeze_layers = freeze_layers if freeze_layers else ["encoder"]  # No plugin config
-        self._load_layers = load_layers if load_layers else ["encoder"]  # No plugin config
+        self._freeze_layers = freeze_layers or ["encoder"]
+        self._load_layers = load_layers or ["encoder"]
         logger.debug("Initialized %s", self.__class__.__name__)
 
     @classmethod
@@ -929,7 +938,7 @@ class _Weights():
         msg = ""
         if not os.path.exists(weights_file):
             msg = "Load weights selected, but the path '%s' does not exist."
-        elif not os.path.splitext(weights_file)[-1].lower() == ".h5":
+        elif os.path.splitext(weights_file)[-1].lower() != ".h5":
             msg = "Load weights selected, but the path '%s' is not a valid Keras model (.h5) file."
 
         if msg:
@@ -971,7 +980,7 @@ class _Weights():
         if not self._weights_file:
             logger.debug("No weights file provided. Not loading weights.")
             return
-        if model_exists and self._weights_file:
+        if model_exists:
             logger.warning("Ignoring weights file '%s' as this model is resuming.",
                            self._weights_file)
             return
@@ -985,7 +994,7 @@ class _Weights():
 
             if not sub_model or not sub_weights:
                 msg = f"Skipping layer {model_name} as not in "
-                msg += "current_model." if not sub_model else f"weights '{self._weights_file}.'"
+                msg += f"weights '{self._weights_file}.'" if sub_model else "current_model."
                 logger.warning(msg)
                 continue
 
@@ -1166,7 +1175,7 @@ class _Loss():
         self._uses_l2_reg = ["ssim", "gmsd"]
         self._inputs = None
         self._names = []
-        self._funcs = dict()
+        self._funcs = {}
         logger.debug("Initialized: %s", self.__class__.__name__)
 
     @property
@@ -1189,7 +1198,7 @@ class _Loss():
         """ list: The list of input tensors to the model that contain the mask. Returns ``None``
         if there is no mask input to the model. """
         mask_inputs = [inp for inp in self._inputs if inp.name.startswith("mask")]
-        return None if not mask_inputs else mask_inputs
+        return mask_inputs or None
 
     @property
     def _mask_shapes(self):
@@ -1239,10 +1248,17 @@ class _Loss():
             output_types = ["mask" if shape[-1] == 1 else "face" for shape in output_shapes]
             logger.debug("side: %s, output names: %s, output_shapes: %s, output_types: %s",
                          side, output_names, output_shapes, output_types)
-            self._names.extend(["{}_{}{}".format(name, side,
-                                                 "" if output_types.count(name) == 1
-                                                 else "_{}".format(idx))
-                                for idx, name in enumerate(output_types)])
+            self._names.extend(
+                [
+                    "{}_{}{}".format(
+                        name,
+                        side,
+                        "" if output_types.count(name) == 1 else f"_{idx}",
+                    )
+                    for idx, name in enumerate(output_types)
+                ]
+            )
+
         logger.debug(self._names)
 
     def _set_loss_functions(self, output_names):
@@ -1266,15 +1282,12 @@ class _Loss():
                 loss_func.add_loss(face_loss, mask_channel=mask_channels[0])
                 self._add_l2_regularization_term(loss_func, mask_channels[0])
 
-                mask_channel = 1
-                for multiplier in ("eye_multiplier", "mouth_multiplier"):
+                for mask_channel, multiplier in enumerate(("eye_multiplier", "mouth_multiplier"), start=1):
                     if self._config[multiplier] > 1:
                         loss_func.add_loss(face_loss,
                                            weight=self._config[multiplier] * 1.0,
                                            mask_channel=mask_channels[mask_channel])
                         self._add_l2_regularization_term(loss_func, mask_channel)
-                    mask_channel += 1
-
             logger.debug("%s: (output_name: '%s', function: %s)", name, output_name, loss_func)
             self._funcs[output_name] = loss_func
         logger.debug("functions: %s", self._funcs)
@@ -1346,13 +1359,13 @@ class State():
                      "config_changeable_items: '%s', no_logs: %s", self.__class__.__name__,
                      model_dir, model_name, config_changeable_items, no_logs)
         self._serializer = get_serializer("json")
-        filename = "{}_state.{}".format(model_name, self._serializer.file_extension)
+        filename = f"{model_name}_state.{self._serializer.file_extension}"
         self._filename = os.path.join(model_dir, filename)
         self._name = model_name
         self._iterations = 0
-        self._sessions = dict()
-        self._lowest_avg_loss = dict()
-        self._config = dict()
+        self._sessions = {}
+        self._lowest_avg_loss = {}
+        self._config = {}
         self._load(config_changeable_items)
         self._session_id = self._new_session_id()
         self._create_new_session(no_logs, config_changeable_items)
@@ -1392,10 +1405,12 @@ class State():
         int
             The newly generated session id
         """
-        if not self._sessions:
-            session_id = 1
-        else:
-            session_id = max(int(key) for key in self._sessions.keys()) + 1
+        session_id = (
+            max(int(key) for key in self._sessions.keys()) + 1
+            if self._sessions
+            else 1
+        )
+
         logger.debug(session_id)
         return session_id
 
@@ -1643,8 +1658,7 @@ class _Inference():  # pylint:disable=too-few-public-methods
         nodes = np.array(nodes, dtype="object")[..., :3]
         num_layers = nodes.shape[0]
         nodes = nodes[self._output_idx] if num_layers == 2 else nodes[0]
-        retval = [(node[0], node[2]) for node in nodes]
-        return retval
+        return [(node[0], node[2]) for node in nodes]
 
     def _make_inference_model(self, saved_model):
         """ Extract the sub-models from the saved model that are required for inference.
@@ -1662,7 +1676,7 @@ class _Inference():  # pylint:disable=too-few-public-methods
         logger.debug("Compiling inference model. saved_model: %s", saved_model)
         struct = self._get_filtered_structure()
         model_inputs = self._get_inputs(saved_model.inputs)
-        compiled_layers = dict()
+        compiled_layers = {}
         for layer in saved_model.layers:
             if layer.name not in struct:
                 logger.debug("Skipping unused layer: '%s'", layer.name)
@@ -1696,7 +1710,7 @@ class _Inference():  # pylint:disable=too-few-public-methods
                 logger.debug("Compiling layer '%s': layer inputs: %s", layer.name, layer_inputs)
                 model = layer(layer_inputs)
             compiled_layers[layer.name] = model
-            retval = KerasModel(model_inputs, model, name="{}_inference".format(saved_model.name))
+            retval = KerasModel(model_inputs, model, name=f"{saved_model.name}_inference")
         logger.debug("Compiled inference model '%s': %s", retval.name, retval)
         return retval
 

@@ -72,7 +72,7 @@ class TrainerBase():
 
         self._model.state.add_session_batchsize(batch_size)
         self._images = images
-        self._sides = sorted(key for key in self._images.keys())
+        self._sides = sorted(iter(self._images.keys()))
 
         self._feeder = _Feeder(images, self._model, batch_size, self._config)
 
@@ -128,9 +128,12 @@ class TrainerBase():
         logger.debug("Enabling TensorBoard Logging")
 
         logger.debug("Setting up TensorBoard Logging")
-        log_dir = os.path.join(str(self._model.model_dir),
-                               "{}_logs".format(self._model.name),
-                               "session_{}".format(self._model.state.session_id))
+        log_dir = os.path.join(
+            str(self._model.model_dir),
+            f"{self._model.name}_logs",
+            f"session_{self._model.state.session_id}",
+        )
+
         tensorboard = tf.keras.callbacks.TensorBoard(log_dir=log_dir,
                                                      histogram_freq=0,  # Must be 0 or hangs
                                                      write_graph=get_backend() != "amd",
@@ -301,7 +304,7 @@ class TrainerBase():
                             for side, side_loss in zip(("A", "B"), loss)])
         timestamp = time.strftime("%H:%M:%S")
         output = "[{}] [#{:05d}] {}".format(timestamp, self._model.iterations, output)
-        print("\r{}".format(output), end="")
+        print(f"\r{output}", end="")
 
     def clear_tensorboard(self):
         """ Stop Tensorboard logging.
@@ -335,9 +338,9 @@ class _Feeder():
         self._model = model
         self._images = images
         self._config = config
-        self._target = dict()
-        self._samples = dict()
-        self._masks = dict()
+        self._target = {}
+        self._samples = {}
+        self._masks = {}
 
         self._feeds = {side: self._load_generator(idx).minibatch_ab(images[side], batch_size, side)
                        for idx, side in enumerate(("a", "b"))}
@@ -362,16 +365,17 @@ class _Feeder():
         input_size = self._model.model.input_shape[output_index][1]
         output_shapes = self._model.output_shapes[output_index]
         logger.debug("input_size: %s, output_shapes: %s", input_size, output_shapes)
-        generator = TrainingDataGenerator(input_size,
-                                          output_shapes,
-                                          self._model.coverage_ratio,
-                                          self._model.color_order,
-                                          not self._model.command_line_arguments.no_augment_color,
-                                          self._model.command_line_arguments.no_flip,
-                                          self._model.command_line_arguments.no_warp,
-                                          self._model.command_line_arguments.warp_to_landmarks,
-                                          self._config)
-        return generator
+        return TrainingDataGenerator(
+            input_size,
+            output_shapes,
+            self._model.coverage_ratio,
+            self._model.color_order,
+            not self._model.command_line_arguments.no_augment_color,
+            self._model.command_line_arguments.no_flip,
+            self._model.command_line_arguments.no_warp,
+            self._model.command_line_arguments.warp_to_landmarks,
+            self._config,
+        )
 
     def _set_preview_feed(self):
         """ Set the preview feed for this feeder.
@@ -385,7 +389,7 @@ class _Feeder():
             The side ("a" or "b") as key, :class:`~lib.training_data.TrainingDataGenerator` as
             value.
         """
-        retval = dict()
+        retval = {}
         for idx, side in enumerate(("a", "b")):
             logger.debug("Setting preview feed: (side: '%s')", side)
             preview_images = self._config.get("preview_images", 14)
@@ -456,7 +460,7 @@ class _Feeder():
             logger.trace("No masks to compile. Returning targets")
             return targets
 
-        if not self._model.config["penalized_mask_loss"] and additional_masks is not None:
+        if not self._model.config["penalized_mask_loss"]:
             masks = additional_masks
         elif additional_masks is not None:
             masks = np.concatenate((masks, additional_masks), axis=-1)
@@ -484,9 +488,9 @@ class _Feeder():
             should not be generated, in which case currently stored previews should be deleted.
         """
         if not do_preview:
-            self._samples = dict()
-            self._target = dict()
-            self._masks = dict()
+            self._samples = {}
+            self._target = {}
+            self._masks = {}
             return
         logger.debug("Generating preview")
         for side in ("a", "b"):
@@ -523,15 +527,18 @@ class _Feeder():
          """
         num_images = self._config.get("preview_images", 14)
         num_images = min(batch_size, num_images) if batch_size is not None else num_images
-        retval = dict()
+        retval = {}
         for side in ("a", "b"):
             logger.debug("Compiling samples: (side: '%s', samples: %s)", side, num_images)
             side_images = images[side] if images is not None else self._target[side]
             side_masks = masks[side] if masks is not None else self._masks[side]
             side_samples = samples[side] if samples is not None else self._samples[side]
-            retval[side] = [side_samples[0:num_images],
-                            side_images[0:num_images],
-                            side_masks[0:num_images]]
+            retval[side] = [
+                side_samples[:num_images],
+                side_images[:num_images],
+                side_masks[:num_images],
+            ]
+
         return retval
 
     def compile_timelapse_sample(self):
@@ -544,9 +551,9 @@ class _Feeder():
             :class:`numpy.ndarrays` for creating a time-lapse frame
         """
         batchsizes = []
-        samples = dict()
-        images = dict()
-        masks = dict()
+        samples = {}
+        images = {}
+        masks = {}
         for side in ("a", "b"):
             batch = next(self._display_feeds["timelapse"][side])
             batchsizes.append(len(batch["samples"]))
@@ -554,8 +561,9 @@ class _Feeder():
             images[side] = batch["targets"][-1]
             masks[side] = batch["masks"]
         batchsize = min(batchsizes)
-        sample = self.compile_sample(batchsize, samples=samples, images=images, masks=masks)
-        return sample
+        return self.compile_sample(
+            batchsize, samples=samples, images=images, masks=masks
+        )
 
     def set_timelapse_feed(self, images, batch_size):
         """ Set the time-lapse feed for this feeder.
@@ -607,7 +615,7 @@ class _Samples():  # pylint:disable=too-few-public-methods
                      self.__class__.__name__, model, coverage_ratio)
         self._model = model
         self._display_mask = model.config["learn_mask"] or model.config["penalized_mask_loss"]
-        self.images = dict()
+        self.images = {}
         self._coverage_ratio = coverage_ratio
         self._scaling = scaling
         logger.debug("Initialized %s", self.__class__.__name__)
@@ -630,9 +638,9 @@ class _Samples():  # pylint:disable=too-few-public-methods
             A compiled preview image ready for display or saving
         """
         logger.debug("Showing sample")
-        feeds = dict()
-        figures = dict()
-        headers = dict()
+        feeds = {}
+        figures = {}
+        headers = {}
         for idx, side in enumerate(("a", "b")):
             samples = self.images[side]
             faces = samples[1]
@@ -647,8 +655,7 @@ class _Samples():  # pylint:disable=too-few-public-methods
 
         for side, samples in self.images.items():
             other_side = "a" if side == "b" else "b"
-            predictions = [preds["{0}_{0}".format(side)],
-                           preds["{}_{}".format(other_side, side)]]
+            predictions = [preds["{0}_{0}".format(side)], preds[f"{other_side}_{side}"]]
             display = self._to_full_frame(side, samples, predictions)
             headers[side] = self._get_headers(side, display[0].shape[1])
             figures[side] = np.stack([display[0], display[1], display[2], ], axis=1)
@@ -716,7 +723,6 @@ class _Samples():  # pylint:disable=too-few-public-methods
             List of :class:`numpy.ndarray` of predictions received from the model
         """
         logger.debug("Getting Predictions")
-        preds = dict()
         standard = self._model.model.predict([feed_a, feed_b])
         swapped = self._model.model.predict([feed_b, feed_a])
 
@@ -733,10 +739,12 @@ class _Samples():  # pylint:disable=too-few-public-methods
             standard = [side[-1] if isinstance(side, list) else side for side in standard]
             swapped = [side[-1] if isinstance(side, list) else side for side in swapped]
 
-        preds["a_a"] = standard[0]
-        preds["b_b"] = standard[1]
-        preds["a_b"] = swapped[0]
-        preds["b_a"] = swapped[1]
+        preds = {
+            "a_a": standard[0],
+            "b_b": standard[1],
+            "a_b": swapped[0],
+            "b_a": swapped[1],
+        }
 
         logger.debug("Returning predictions: %s", {key: val.shape for key, val in preds.items()})
         return preds
@@ -904,9 +912,12 @@ class _Samples():  # pylint:disable=too-few-public-methods
         total_width = width * 3
         logger.debug("height: %s, total_width: %s", height, total_width)
         font = cv2.FONT_HERSHEY_SIMPLEX
-        texts = ["{} ({})".format(titles[0], side),
-                 "{0} > {0}".format(titles[0]),
-                 "{} > {}".format(titles[0], titles[1])]
+        texts = [
+            f"{titles[0]} ({side})",
+            "{0} > {0}".format(titles[0]),
+            f"{titles[0]} > {titles[1]}",
+        ]
+
         scaling = (width / 144) * 0.45
         text_sizes = [cv2.getTextSize(texts[idx], font, scaling, 1)[0]
                       for idx in range(len(texts))]
@@ -945,7 +956,7 @@ class _Samples():  # pylint:disable=too-few-public-methods
             The original headers duplicated by the number of columns
         """
         for side, header in headers.items():
-            duped = tuple([header for _ in range(columns)])
+            duped = tuple(header for _ in range(columns))
             headers[side] = np.concatenate(duped, axis=1)
             logger.debug("side: %s header.shape: %s", side, header.shape)
         return headers
@@ -996,13 +1007,19 @@ class _Timelapse():  # pylint:disable=too-few-public-methods
         """
         logger.debug("Setting up time-lapse")
         if output is None:
-            output = str(get_folder(os.path.join(str(self._model.model_dir),
-                                                 "{}_timelapse".format(self._model.name))))
+            output = str(
+                get_folder(
+                    os.path.join(
+                        str(self._model.model_dir), f"{self._model.name}_timelapse"
+                    )
+                )
+            )
+
         self._output_file = str(output)
         logger.debug("Time-lapse output set to '%s'", self._output_file)
 
         # Rewrite paths to pull from the training images so mask and face data can be accessed
-        images = dict()
+        images = {}
         for side, input_ in zip(("a", "b"), (input_a, input_b)):
             training_path = os.path.dirname(self._image_paths[side][0])
             images[side] = [os.path.join(training_path, os.path.basename(pth))
@@ -1036,7 +1053,7 @@ class _Timelapse():  # pylint:disable=too-few-public-methods
         image = self._samples.show_sample()
         if image is None:
             return
-        filename = os.path.join(self._output_file, str(int(time.time())) + ".jpg")
+        filename = os.path.join(self._output_file, f"{int(time.time())}.jpg")
 
         cv2.imwrite(filename, image)
         logger.debug("Created time-lapse: '%s'", filename)

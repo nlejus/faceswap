@@ -41,11 +41,10 @@ class ScriptExecutor():  # pylint:disable=too-few-public-methods
         self._test_for_tf_version()
         self._test_for_gui()
         cmd = os.path.basename(sys.argv[0])
-        src = "tools.{}".format(self._command.lower()) if cmd == "tools.py" else "scripts"
+        src = f"tools.{self._command.lower()}" if cmd == "tools.py" else "scripts"
         mod = ".".join((src, self._command.lower()))
         module = import_module(mod)
-        script = getattr(module, self._command.title())
-        return script
+        return getattr(module, self._command.title())
 
     def _test_for_tf_version(self):
         """ Check that the required Tensorflow version is installed.
@@ -69,21 +68,18 @@ class ScriptExecutor():  # pylint:disable=too-few-public-methods
                     "C++ Redistributable (2015, 2017, 2019) installed for your machine from: "
                     "https://support.microsoft.com/en-gb/help/2977003")
             else:
-                msg = (
-                    "There was an error importing Tensorflow. This is most likely because you do "
-                    "not have TensorFlow installed, or you are trying to run tensorflow-gpu on a "
-                    "system without an Nvidia graphics card. Original import "
-                    "error: {}".format(str(err)))
+                msg = f"There was an error importing Tensorflow. This is most likely because you do not have TensorFlow installed, or you are trying to run tensorflow-gpu on a system without an Nvidia graphics card. Original import error: {str(err)}"
+
             self._handle_import_error(msg)
 
         tf_ver = float(".".join(tf.__version__.split(".")[:2]))  # pylint:disable=no-member
         if tf_ver < min_ver:
-            msg = ("The minimum supported Tensorflow is version {} but you have version {} "
-                   "installed. Please upgrade Tensorflow.".format(min_ver, tf_ver))
+            msg = f"The minimum supported Tensorflow is version {min_ver} but you have version {tf_ver} installed. Please upgrade Tensorflow."
+
             self._handle_import_error(msg)
         if tf_ver > max_ver:
-            msg = ("The maximum supported Tensorflow is version {} but you have version {} "
-                   "installed. Please downgrade Tensorflow.".format(max_ver, tf_ver))
+            msg = f"The maximum supported Tensorflow is version {max_ver} but you have version {tf_ver} installed. Please downgrade Tensorflow."
+
             self._handle_import_error(msg)
         logger.debug("Installed Tensorflow Version: %s", tf_ver)
 
@@ -97,13 +93,12 @@ class ScriptExecutor():  # pylint:disable=too-few-public-methods
         message: str
             The error message to display
         """
-        if "gui" in sys.argv and platform.system() == "Windows":
-            logger.error(message)
-            logger.info("Press \"ENTER\" to dismiss the message and close FaceSwap")
-            input()
-            sys.exit(1)
-        else:
+        if "gui" not in sys.argv or platform.system() != "Windows":
             raise FaceswapError(message)
+        logger.error(message)
+        logger.info("Press \"ENTER\" to dismiss the message and close FaceSwap")
+        input()
+        sys.exit(1)
 
     def _test_for_gui(self):
         """ If running the gui, performs check to ensure necessary prerequisites are present. """

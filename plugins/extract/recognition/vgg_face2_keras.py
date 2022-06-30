@@ -147,10 +147,9 @@ class VGGFace2(Extractor):  # pylint:disable=abstract-method
             func = linkage
 
         result_linkage = func(predictions, **kwargs)
-        result_order = self._seriation(result_linkage,
-                                       num_predictions,
-                                       num_predictions + num_predictions - 2)
-        return result_order
+        return self._seriation(
+            result_linkage, num_predictions, num_predictions + num_predictions - 2
+        )
 
     @staticmethod
     def _use_vector_linkage(item_count, dims):
@@ -196,9 +195,10 @@ class VGGFace2(Extractor):  # pylint:disable=abstract-method
                            int(free_ram), int(linkage_required))
             retval = True
         else:
-            raise FaceswapError("Not enough RAM available to sort faces. Try reducing "
-                                "the size of  your dataset. Free RAM: {}MB. "
-                                "Required RAM: {}MB".format(int(free_ram), int(vector_required)))
+            raise FaceswapError(
+                f"Not enough RAM available to sort faces. Try reducing the size of  your dataset. Free RAM: {int(free_ram)}MB. Required RAM: {int(vector_required)}MB"
+            )
+
         logger.debug(retval)
         return retval
 

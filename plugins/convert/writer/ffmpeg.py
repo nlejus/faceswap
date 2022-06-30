@@ -28,7 +28,7 @@ class Writer(Output):
         """ Return full path to video output """
         filename = os.path.basename(self.source_video)
         filename = os.path.splitext(filename)[0]
-        filename = "{}_converted.{}".format(filename, self.config["container"])
+        filename = f'{filename}_converted.{self.config["container"]}'
         retval = os.path.join(self.output_folder, filename)
         logger.debug(retval)
         return retval
@@ -37,7 +37,7 @@ class Writer(Output):
     def video_tmp_file(self):
         """ Temporary video file, prior to muxing final audio """
         path, filename = os.path.split(self.video_file)
-        retval = os.path.join(path, "__tmp_{}".format(filename))
+        retval = os.path.join(path, f"__tmp_{filename}")
         logger.debug(retval)
         return retval
 
@@ -63,20 +63,24 @@ class Writer(Output):
         codec = self.config["codec"]
         tune = self.config["tune"]
         # Force all frames to the same size
-        output_args = ["-vf", "scale={}".format(self.output_dimensions)]
+        output_args = [
+            "-vf",
+            f"scale={self.output_dimensions}",
+            *["-c:v", codec],
+            *["-crf", str(self.config["crf"])],
+            *["-preset", self.config["preset"]],
+        ]
 
-        output_args.extend(["-c:v", codec])
-        output_args.extend(["-crf", str(self.config["crf"])])
-        output_args.extend(["-preset", self.config["preset"]])
 
         if tune is not None and tune in self.valid_tune[codec]:
             output_args.extend(["-tune", tune])
 
-        if codec == "libx264" and self.config["profile"] != "auto":
-            output_args.extend(["-profile:v", self.config["profile"]])
+        if codec == "libx264":
+            if self.config["profile"] != "auto":
+                output_args.extend(["-profile:v", self.config["profile"]])
 
-        if codec == "libx264" and self.config["level"] != "auto":
-            output_args.extend(["-level", self.config["level"]])
+            if self.config["level"] != "auto":
+                output_args.extend(["-level", self.config["level"]])
 
         logger.debug(output_args)
         return output_args
@@ -86,7 +90,7 @@ class Writer(Output):
         if self.frame_ranges is None:
             retval = list(range(1, total_count + 1))
         else:
-            retval = list()
+            retval = []
             for rng in self.frame_ranges:
                 retval.extend(list(range(rng[0], rng[1] + 1)))
         logger.debug("frame_order: %s", retval)
@@ -118,9 +122,8 @@ class Writer(Output):
             sized images coming in and ensure all images go out at the same size for writers
             that require it and mapped to a macro block size 16"""
         logger.debug("input dimensions: %s", frame_dims)
-        self.output_dimensions = "{}:{}".format(
-            int(ceil(frame_dims[1] / 16) * 16),
-            int(ceil(frame_dims[0] / 16) * 16))
+        self.output_dimensions = f"{int(ceil(frame_dims[1] / 16) * 16)}:{int(ceil(frame_dims[0] / 16) * 16)}"
+
         logger.debug("Set dimensions: %s", self.output_dimensions)
 
     def save_from_cache(self):

@@ -62,15 +62,15 @@ class GPUStats():
     def __init__(self, log=True):
         # Logger is held internally, as we don't want to log when obtaining system stats on crash
         self._logger = logging.getLogger(__name__) if log else None
-        self._log("debug", "Initializing {}".format(self.__class__.__name__))
+        self._log("debug", f"Initializing {self.__class__.__name__}")
 
         self._plaid = None
         self._initialized = False
         self._device_count = 0
-        self._active_devices = list()
-        self._handles = list()
+        self._active_devices = []
+        self._handles = []
         self._driver = None
-        self._devices = list()
+        self._devices = []
         self._vram = None
 
         self._initialize(log)
@@ -83,7 +83,7 @@ class GPUStats():
             return
 
         self._shutdown()
-        self._log("debug", "Initialized {}".format(self.__class__.__name__))
+        self._log("debug", f"Initialized {self.__class__.__name__}")
 
     @property
     def device_count(self):
@@ -93,7 +93,7 @@ class GPUStats():
     @property
     def cli_devices(self):
         """ list: List of available devices for use in faceswap's command line arguments """
-        return ["{}: {}".format(idx, device) for idx, device in enumerate(self._devices)]
+        return [f"{idx}: {device}" for idx, device in enumerate(self._devices)]
 
     @property
     def exclude_all_devices(self):
@@ -157,57 +157,54 @@ class GPUStats():
             logger being available then this parameter should be set to ``False``. Otherwise set
             to ``True``. Default: ``False``
         """
-        if not self._initialized:
-            if get_backend() == "amd":
-                self._log("debug", "AMD Detected. Using plaidMLStats")
-                loglevel = "INFO" if self._logger is None else self._logger.getEffectiveLevel()
-                self._plaid = plaidlib(log_level=loglevel, log=log)
-            elif IS_MACOS:
-                self._log("debug", "macOS Detected. Using pynvx")
-                try:
-                    pynvx.cudaInit()
-                except RuntimeError:
-                    self._initialized = True
-                    return
-            else:
-                try:
-                    self._log("debug", "OS is not macOS. Trying pynvml")
-                    pynvml.nvmlInit()
-                except (pynvml.NVMLError_LibraryNotFound,  # pylint: disable=no-member
+        if self._initialized:
+            return
+        if get_backend() == "amd":
+            self._log("debug", "AMD Detected. Using plaidMLStats")
+            loglevel = "INFO" if self._logger is None else self._logger.getEffectiveLevel()
+            self._plaid = plaidlib(log_level=loglevel, log=log)
+        elif IS_MACOS:
+            self._log("debug", "macOS Detected. Using pynvx")
+            try:
+                pynvx.cudaInit()
+            except RuntimeError:
+                self._initialized = True
+                return
+        else:
+            try:
+                self._log("debug", "OS is not macOS. Trying pynvml")
+                pynvml.nvmlInit()
+            except (pynvml.NVMLError_LibraryNotFound,  # pylint: disable=no-member
                         pynvml.NVMLError_DriverNotLoaded,  # pylint: disable=no-member
                         pynvml.NVMLError_NoPermission) as err:  # pylint: disable=no-member
-                    if plaidlib is not None:
-                        self._log("debug", "pynvml errored. Trying plaidML")
-                        self._plaid = plaidlib(log=log)
-                    else:
-                        msg = ("There was an error reading from the Nvidia Machine Learning "
-                               "Library. Either you do not have an Nvidia GPU (in which case "
-                               "this warning can be ignored) or the most likely cause is "
-                               "incorrectly installed drivers. If this is the case, Please remove "
-                               "and reinstall your Nvidia drivers before reporting."
-                               "Original Error: {}".format(str(err)))
-                        self._log("warning", msg)
-                        self._initialized = True
-                        return
-                except Exception as err:  # pylint: disable=broad-except
-                    msg = ("An unhandled exception occured loading pynvml. "
-                           "Original error: {}".format(str(err)))
-                    if self._logger:
-                        self._logger.error(msg)
-                    else:
-                        print(msg)
+                if plaidlib is not None:
+                    self._log("debug", "pynvml errored. Trying plaidML")
+                    self._plaid = plaidlib(log=log)
+                else:
+                    msg = f"There was an error reading from the Nvidia Machine Learning Library. Either you do not have an Nvidia GPU (in which case this warning can be ignored) or the most likely cause is incorrectly installed drivers. If this is the case, Please remove and reinstall your Nvidia drivers before reporting.Original Error: {str(err)}"
+
+                    self._log("warning", msg)
                     self._initialized = True
                     return
-            self._initialized = True
-            self._get_device_count()
-            self._get_active_devices()
-            self._get_handles()
+            except Exception as err:  # pylint: disable=broad-except
+                msg = f"An unhandled exception occured loading pynvml. Original error: {str(err)}"
+
+                if self._logger:
+                    self._logger.error(msg)
+                else:
+                    print(msg)
+                self._initialized = True
+                return
+        self._initialized = True
+        self._get_device_count()
+        self._get_active_devices()
+        self._get_handles()
 
     def _shutdown(self):
         """ Shutdown pynvml if it was the library used for obtaining stats and set
         :attr:`_initialized` back to ``False``. """
         if self._initialized:
-            self._handles = list()
+            self._handles = []
             if not IS_MACOS and not self._is_plaidml:
                 pynvml.nvmlShutdown()
             self._initialized = False
@@ -224,7 +221,7 @@ class GPUStats():
                 self._device_count = pynvml.nvmlDeviceGetCount()
             except pynvml.NVMLError:
                 self._device_count = 0
-        self._log("debug", "GPU Device count: {}".format(self._device_count))
+        self._log("debug", f"GPU Device count: {self._device_count}")
 
     def _get_active_devices(self):
         """ Obtain the indices of active GPUs (those that have not been explicitly excluded by
@@ -232,17 +229,15 @@ class GPUStats():
         :attr:`_active_devices`. """
         if self._is_plaidml:
             self._active_devices = self._plaid.active_devices
+        elif self._device_count == 0:
+            self._active_devices = []
         else:
-            if self._device_count == 0:
-                self._active_devices = []
-            else:
-                devices = [idx for idx in range(self._device_count) if idx not in _EXCLUDE_DEVICES]
-                env_devices = os.environ.get("CUDA_VISIBLE_DEVICES", "")
-                if env_devices:
-                    env_devices = [int(i) for i in env_devices.split(",")]
-                    devices = [idx for idx in devices if idx in env_devices]
-                self._active_devices = devices
-        self._log("debug", "Active GPU Devices: {}".format(self._active_devices))
+            devices = [idx for idx in range(self._device_count) if idx not in _EXCLUDE_DEVICES]
+            if env_devices := os.environ.get("CUDA_VISIBLE_DEVICES", ""):
+                env_devices = [int(i) for i in env_devices.split(",")]
+                devices = [idx for idx in devices if idx in env_devices]
+            self._active_devices = devices
+        self._log("debug", f"Active GPU Devices: {self._active_devices}")
 
     def _get_handles(self):
         """ Obtain the internal handle identifiers for the system GPUs and allocate to
@@ -254,7 +249,7 @@ class GPUStats():
         else:
             self._handles = [pynvml.nvmlDeviceGetHandleByIndex(i)
                              for i in range(self._device_count)]
-        self._log("debug", "GPU Handles found: {}".format(len(self._handles)))
+        self._log("debug", f"GPU Handles found: {len(self._handles)}")
 
     def _get_driver(self):
         """ Obtain and return the installed driver version for the system's GPUs.
@@ -273,7 +268,7 @@ class GPUStats():
                 driver = pynvml.nvmlSystemGetDriverVersion().decode("utf-8")
             except pynvml.NVMLError:
                 driver = "No Nvidia driver found"
-        self._log("debug", "GPU Driver: {}".format(driver))
+        self._log("debug", f"GPU Driver: {driver}")
         return driver
 
     def _get_devices(self):
@@ -288,7 +283,7 @@ class GPUStats():
         """
         self._initialize()
         if self._device_count == 0:
-            names = list()
+            names = []
         if self._is_plaidml:
             names = self._plaid.names
         elif IS_MACOS:
@@ -297,7 +292,7 @@ class GPUStats():
         else:
             names = [pynvml.nvmlDeviceGetName(handle).decode("utf-8")
                      for handle in self._handles]
-        self._log("debug", "GPU Devices: {}".format(names))
+        self._log("debug", f"GPU Devices: {names}")
         return names
 
     def _get_vram(self):
@@ -311,7 +306,7 @@ class GPUStats():
         """
         self._initialize()
         if self._device_count == 0:
-            vram = list()
+            vram = []
         elif self._is_plaidml:
             vram = self._plaid.vram
         elif IS_MACOS:
@@ -321,7 +316,7 @@ class GPUStats():
             vram = [pynvml.nvmlDeviceGetMemoryInfo(handle).total /
                     (1024 * 1024)
                     for handle in self._handles]
-        self._log("debug", "GPU VRAM: {}".format(vram))
+        self._log("debug", f"GPU VRAM: {vram}")
         return vram
 
     def _get_free_vram(self):
@@ -350,7 +345,7 @@ class GPUStats():
             vram = [pynvml.nvmlDeviceGetMemoryInfo(handle).free / (1024 * 1024)
                     for handle in self._handles]
         self._shutdown()
-        self._log("debug", "GPU VRAM free: {}".format(vram))
+        self._log("debug", f"GPU VRAM free: {vram}")
         return vram
 
     def get_card_most_free(self):
@@ -384,5 +379,5 @@ class GPUStats():
                   "device": self._devices[card_id],
                   "free": vram_free,
                   "total": self._vram[card_id]}
-        self._log("debug", "Active GPU Card with most free VRAM: {}".format(retval))
+        self._log("debug", f"Active GPU Card with most free VRAM: {retval}")
         return retval

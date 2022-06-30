@@ -27,7 +27,7 @@ class Output():
 
         # Methods for making sure frames are written out in frame order
         self.re_search = re.compile(r"(\d+)(?=\.\w+$)")  # Identify frame numbers
-        self.cache = dict()  # Cache for when frames must be written in correct order
+        self.cache = {}
         logger.debug("Initialized %s", self.__class__.__name__)
 
     @property
@@ -35,15 +35,14 @@ class Output():
         """ Return whether the writer is a stream or images
             Writers that write to a stream have a frame_order paramater to dictate
             the order in which frames should be written out (eg. gif/ffmpeg) """
-        retval = hasattr(self, "frame_order")
-        return retval
+        return hasattr(self, "frame_order")
 
     def output_filename(self, filename):
         """ Return the output filename with the correct folder and extension
             NB: The plugin must have a config item 'format' that contains the
                 file extension to use this method """
         filename = os.path.splitext(os.path.basename(filename))[0]
-        out_filename = "{}.{}".format(filename, self.config["format"])
+        out_filename = f'{filename}.{self.config["format"]}'
         out_filename = os.path.join(self.output_folder, out_filename)
         logger.trace("in filename: '%s', out filename: '%s'", filename, out_filename)
         return out_filename

@@ -120,5 +120,4 @@ class Adjustment():
         """ Perform selected adjustment on face """
         logger.trace("Performing mask adjustment: (plugin: %s, args: %s, kwargs: %s",
                      self.__module__, args, kwargs)
-        retval = self.process(*args, **kwargs)
-        return retval
+        return self.process(*args, **kwargs)

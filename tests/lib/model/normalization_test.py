@@ -65,8 +65,10 @@ def test_group_normalization(dummy):  # pylint:disable=unused-argument
 
 _PARAMS = ["center", "scale"]
 _VALUES = list(product([True, False], repeat=len(_PARAMS)))
-_IDS = ["{}[{}]".format("|".join([_PARAMS[idx] for idx, b in enumerate(v) if b]),
-                        get_backend().upper()) for v in _VALUES]
+_IDS = [
+    f'{"|".join([_PARAMS[idx] for idx, b in enumerate(v) if b])}[{get_backend().upper()}]'
+    for v in _VALUES
+]
 
 
 @pytest.mark.parametrize(_PARAMS, _VALUES, ids=_IDS)
@@ -101,8 +103,9 @@ def test_layer_normalization(center, scale):
 
 _PARAMS = ["partial", "bias"]
 _VALUES = [(0.0, False), (0.25, False), (0.5, True), (0.75, False), (1.0, True)]
-_IDS = ["partial={}|bias={}[{}]".format(v[0], v[1], get_backend().upper())
-        for v in _VALUES]
+_IDS = [
+    f"partial={v[0]}|bias={v[1]}[{get_backend().upper()}]" for v in _VALUES
+]
 
 
 @pytest.mark.parametrize(_PARAMS, _VALUES, ids=_IDS)

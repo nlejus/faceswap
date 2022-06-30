@@ -139,13 +139,13 @@ class Extractor():
         """ int: Batchsize for feeding this model. The number of images the model should
         feed through at once. """
 
-        self._queues = dict()
+        self._queues = {}
         """ dict: in + out queues and internal queues for this plugin, """
 
         self._threads = []
         """ list: Internal threads for this plugin """
 
-        self._extract_media = dict()
+        self._extract_media = {}
         """ dict: The :class:`plugins.extract.pipeline.ExtractMedia` objects currently being
         processed. Stored at input for pairing back up on output of extractor process """
 
@@ -380,9 +380,12 @@ class Extractor():
         logger.info("Initializing %s (%s)...", self.name, self._plugin_type.title())
         self.queue_size = 1
         name = self.name.replace(" ", "_").lower()
-        self._add_queues(kwargs["in_queue"],
-                         kwargs["out_queue"],
-                         ["predict_{}".format(name), "post_{}".format(name)])
+        self._add_queues(
+            kwargs["in_queue"],
+            kwargs["out_queue"],
+            [f"predict_{name}", f"post_{name}"],
+        )
+
         self._compile_threads()
         try:
             self.init_model()
@@ -409,27 +412,37 @@ class Extractor():
         self._queues["out"] = out_queue
         for q_name in queues:
             self._queues[q_name] = queue_manager.get_queue(
-                name="{}{}_{}".format(self._plugin_type, self._instance, q_name),
-                maxsize=self.queue_size)
+                name=f"{self._plugin_type}{self._instance}_{q_name}",
+                maxsize=self.queue_size,
+            )
 
     # <<< THREAD METHODS >>> #
     def _compile_threads(self):
         """ Compile the threads into self._threads list """
         logger.debug("Compiling %s threads", self._plugin_type)
         name = self.name.replace(" ", "_").lower()
-        base_name = "{}_{}".format(self._plugin_type, name)
-        self._add_thread("{}_input".format(base_name),
-                         self._process_input,
-                         self._queues["in"],
-                         self._queues["predict_{}".format(name)])
-        self._add_thread("{}_predict".format(base_name),
-                         self._predict,
-                         self._queues["predict_{}".format(name)],
-                         self._queues["post_{}".format(name)])
-        self._add_thread("{}_output".format(base_name),
-                         self._process_output,
-                         self._queues["post_{}".format(name)],
-                         self._queues["out"])
+        base_name = f"{self._plugin_type}_{name}"
+        self._add_thread(
+            f"{base_name}_input",
+            self._process_input,
+            self._queues["in"],
+            self._queues[f"predict_{name}"],
+        )
+
+        self._add_thread(
+            f"{base_name}_predict",
+            self._predict,
+            self._queues[f"predict_{name}"],
+            self._queues[f"post_{name}"],
+        )
+
+        self._add_thread(
+            f"{base_name}_output",
+            self._process_output,
+            self._queues[f"post_{name}"],
+            self._queues["out"],
+        )
+
         logger.debug("Compiled %s threads: %s", self._plugin_type, self._threads)
 
     def _add_thread(self, name, function, in_queue, out_queue):

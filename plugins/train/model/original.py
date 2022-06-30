@@ -94,8 +94,7 @@ class Model(ModelBase):
 
         outputs = [self.decoder("a")(encoder_a), self.decoder("b")(encoder_b)]
 
-        autoencoder = KerasModel(inputs, outputs, name=self.name)
-        return autoencoder
+        return KerasModel(inputs, outputs, name=self.name)
 
     def encoder(self):
         """ The original Faceswap Encoder Network.
@@ -144,7 +143,7 @@ class Model(ModelBase):
         var_x = UpscaleBlock(256, activation="leakyrelu")(var_x)
         var_x = UpscaleBlock(128, activation="leakyrelu")(var_x)
         var_x = UpscaleBlock(64, activation="leakyrelu")(var_x)
-        var_x = Conv2DOutput(3, 5, name="face_out_{}".format(side))(var_x)
+        var_x = Conv2DOutput(3, 5, name=f"face_out_{side}")(var_x)
         outputs = [var_x]
 
         if self.learn_mask:
@@ -152,12 +151,14 @@ class Model(ModelBase):
             var_y = UpscaleBlock(256, activation="leakyrelu")(var_y)
             var_y = UpscaleBlock(128, activation="leakyrelu")(var_y)
             var_y = UpscaleBlock(64, activation="leakyrelu")(var_y)
-            var_y = Conv2DOutput(1, 5, name="mask_out_{}".format(side))(var_y)
+            var_y = Conv2DOutput(1, 5, name=f"mask_out_{side}")(var_y)
             outputs.append(var_y)
-        return KerasModel(input_, outputs=outputs, name="decoder_{}".format(side))
+        return KerasModel(input_, outputs=outputs, name=f"decoder_{side}")
 
     def _legacy_mapping(self):
         """ The mapping of legacy separate model names to single model names """
-        return {"{}_encoder.h5".format(self.name): "encoder",
-                "{}_decoder_A.h5".format(self.name): "decoder_a",
-                "{}_decoder_B.h5".format(self.name): "decoder_b"}
+        return {
+            f"{self.name}_encoder.h5": "encoder",
+            f"{self.name}_decoder_A.h5": "decoder_a",
+            f"{self.name}_decoder_B.h5": "decoder_b",
+        }

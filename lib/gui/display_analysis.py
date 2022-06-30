@@ -167,7 +167,7 @@ class Analysis(DisplayPage):  # pylint: disable=too-many-ancestors
         logger.debug("Getting model name")
         model_name = state_file.replace("_state.json", "")
         logger.debug("model_name: %s", model_name)
-        logs_dir = os.path.join(model_dir, "{}_logs".format(model_name))
+        logs_dir = os.path.join(model_dir, f"{model_name}_logs")
         if not os.path.isdir(logs_dir):
             logger.warning("No logs folder found in folder: '%s'", logs_dir)
             return None
@@ -200,7 +200,7 @@ class Analysis(DisplayPage):  # pylint: disable=too-many-ancestors
                 return
             self._summary = result
             self._thread = None
-            self.set_info("Session: {}".format(message))
+            self.set_info(f"Session: {message}")
             self._stats.tree_insert_data(self._summary)
 
     @classmethod
@@ -253,7 +253,7 @@ class Analysis(DisplayPage):  # pylint: disable=too-many-ancestors
         Session.initialize_session(model_dir, model_name, is_training=False)
         msg = full_path
         if len(msg) > 70:
-            msg = "...{}".format(msg[-70:])
+            msg = f"...{msg[-70:]}"
         self._set_session_summary(msg)
 
     def _reset_session(self):
@@ -282,7 +282,7 @@ class Analysis(DisplayPage):  # pylint: disable=too-many-ancestors
             return
 
         logger.debug("Saving to: '%s'", savefile)
-        fieldnames = sorted(key for key in self._summary[0].keys())
+        fieldnames = sorted(iter(self._summary[0].keys()))
         with savefile as outfile:
             csvout = csv.DictWriter(outfile, fieldnames)
             csvout.writeheader()
@@ -313,10 +313,10 @@ class _Options():  # pylint:disable=too-few-public-methods
         dict
             The button names to button objects
         """
-        buttons = dict()
+        buttons = {}
         for btntype in ("clear", "save", "load"):
             logger.debug("Adding button: '%s'", btntype)
-            cmd = getattr(self._parent, "_{}_session".format(btntype))
+            cmd = getattr(self._parent, f"_{btntype}_session")
             btn = ttk.Button(self._parent.optsframe,
                              image=get_images().icons[btntype],
                              command=cmd)
@@ -384,7 +384,7 @@ class StatsData(ttk.Frame):  # pylint: disable=too-many-ancestors
                      self.__class__.__name__, parent, selected_id, helptext)
         super().__init__(parent)
         self._selected_id = selected_id
-        self._popup_positions = list()
+        self._popup_positions = []
 
         self._canvas = tk.Canvas(self, bd=0, highlightthickness=0)
         tree_frame = ttk.Frame(self._canvas)
@@ -466,7 +466,7 @@ class StatsData(ttk.Frame):  # pylint: disable=too-many-ancestors
         self._tree["columns"] = [column[0] for column in columns]
 
         for column in columns:
-            text = column[2] if column[2] else column[0].title()
+            text = column[2] or column[0].title()
             logger.debug("Adding heading: '%s'", text)
             self._tree.heading(column[0], text=text)
             self._tree.column(column[0], width=column[1], anchor=tk.E, minwidth=40)
@@ -519,8 +519,7 @@ class StatsData(ttk.Frame):  # pylint: disable=too-many-ancestors
         """
         region = self._tree.identify("region", event.x, event.y)
         selection = self._tree.focus()
-        values = self._tree.item(selection, "values")
-        if values:
+        if values := self._tree.item(selection, "values"):
             logger.debug("Selected values: %s", values)
             self._selected_id.set(values[0])
             if region == "tree" and self._check_valid_data(values):
@@ -565,10 +564,7 @@ class StatsData(ttk.Frame):  # pylint: disable=too-many-ancestors
         position = self._data_popup_get_position()
         height = int(900 * scaling_factor)
         width = int(480 * scaling_factor)
-        toplevel.geometry("{}x{}+{}+{}".format(str(height),
-                                               str(width),
-                                               str(position[0]),
-                                               str(position[1])))
+        toplevel.geometry(f"{height}x{width}+{str(position[0])}+{str(position[1])}")
         toplevel.update()
 
     def _data_popup_title(self):
@@ -584,9 +580,9 @@ class StatsData(ttk.Frame):  # pylint: disable=too-many-ancestors
         model_dir, model_name = os.path.split(Session.model_filename)
         title = "All Sessions"
         if selected_id != "Total":
-            title = "{} Model: Session #{}".format(model_name.title(), selected_id)
+            title = f"{model_name.title()} Model: Session #{selected_id}"
         logger.debug("Title: '%s'", title)
-        return "{} - {}".format(title, model_dir)
+        return f"{title} - {model_dir}"
 
     def _data_popup_get_position(self):
         """ Get the position of the next window to pop the summary graph to.

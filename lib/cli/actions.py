@@ -113,7 +113,7 @@ class FilesFullPaths(FileFullPaths):  # pylint: disable=too-few-public-methods
     def __init__(self, *args, filetypes=None, **kwargs):
         if kwargs.get("nargs", None) is None:
             opt = kwargs["option_strings"]
-            raise ValueError("nargs must be provided for FilesFullPaths: {}".format(opt))
+            raise ValueError(f"nargs must be provided for FilesFullPaths: {opt}")
         super().__init__(*args, **kwargs)
 
 
@@ -207,11 +207,11 @@ class ContextFullPaths(FileFullPaths):
     def __init__(self, *args, filetypes=None, action_option=None, **kwargs):
         opt = kwargs["option_strings"]
         if kwargs.get("nargs", None) is not None:
-            raise ValueError("nargs not allowed for ContextFullPaths: {}".format(opt))
+            raise ValueError(f"nargs not allowed for ContextFullPaths: {opt}")
         if filetypes is None:
-            raise ValueError("filetypes is required for ContextFullPaths: {}".format(opt))
+            raise ValueError(f"filetypes is required for ContextFullPaths: {opt}")
         if action_option is None:
-            raise ValueError("action_option is required for ContextFullPaths: {}".format(opt))
+            raise ValueError(f"action_option is required for ContextFullPaths: {opt}")
         super().__init__(*args, filetypes=filetypes, **kwargs)
         self.action_option = action_option
 
@@ -252,9 +252,9 @@ class Radio(argparse.Action):  # pylint: disable=too-few-public-methods
     def __init__(self, *args, **kwargs):
         opt = kwargs["option_strings"]
         if kwargs.get("nargs", None) is not None:
-            raise ValueError("nargs not allowed for Radio buttons: {}".format(opt))
+            raise ValueError(f"nargs not allowed for Radio buttons: {opt}")
         if not kwargs.get("choices", []):
-            raise ValueError("Choices must be provided for Radio buttons: {}".format(opt))
+            raise ValueError(f"Choices must be provided for Radio buttons: {opt}")
         super().__init__(*args, **kwargs)
 
     def __call__(self, parser, namespace, values, option_string=None):
@@ -280,9 +280,9 @@ class MultiOption(argparse.Action):  # pylint: disable=too-few-public-methods
     def __init__(self, *args, **kwargs):
         opt = kwargs["option_strings"]
         if not kwargs.get("nargs", []):
-            raise ValueError("nargs must be provided for MultiOption: {}".format(opt))
+            raise ValueError(f"nargs must be provided for MultiOption: {opt}")
         if not kwargs.get("choices", []):
-            raise ValueError("Choices must be provided for MultiOption: {}".format(opt))
+            raise ValueError(f"Choices must be provided for MultiOption: {opt}")
         super().__init__(*args, **kwargs)
 
     def __call__(self, parser, namespace, values, option_string=None):
@@ -335,15 +335,15 @@ class Slider(argparse.Action):  # pylint: disable=too-few-public-methods
     def __init__(self, *args, min_max=None, rounding=None, **kwargs):
         opt = kwargs["option_strings"]
         if kwargs.get("nargs", None) is not None:
-            raise ValueError("nargs not allowed for Slider: {}".format(opt))
+            raise ValueError(f"nargs not allowed for Slider: {opt}")
         if kwargs.get("default", None) is None:
-            raise ValueError("A default value must be supplied for Slider: {}".format(opt))
+            raise ValueError(f"A default value must be supplied for Slider: {opt}")
         if kwargs.get("type", None) not in (int, float):
-            raise ValueError("Sliders only accept int and float data types: {}".format(opt))
+            raise ValueError(f"Sliders only accept int and float data types: {opt}")
         if min_max is None:
-            raise ValueError("min_max must be provided for Sliders: {}".format(opt))
+            raise ValueError(f"min_max must be provided for Sliders: {opt}")
         if rounding is None:
-            raise ValueError("rounding must be provided for Sliders: {}".format(opt))
+            raise ValueError(f"rounding must be provided for Sliders: {opt}")
 
         super().__init__(*args, **kwargs)
         self.min_max = min_max

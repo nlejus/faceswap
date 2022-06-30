@@ -91,9 +91,9 @@ class Check():
     def _compile_output(self):
         """ Compile list of frames that meet criteria """
         action = self._job.replace("-", "_")
-        processor = getattr(self, "_get_{}".format(action))
+        processor = getattr(self, f"_get_{action}")
         logger.debug("Processor: %s", processor)
-        return [item for item in processor()]  # pylint:disable=unnecessary-comprehension
+        return list(processor())
 
     def _get_no_faces(self):
         """ yield each frame that has no face match in alignments file """
@@ -108,9 +108,8 @@ class Check():
     def _get_multi_faces(self):
         """ yield each frame or face that has multiple faces
             matched in alignments file """
-        process_type = getattr(self, "_get_multi_faces_{}".format(self._type))
-        for item in process_type():
-            yield item
+        process_type = getattr(self, f"_get_multi_faces_{self._type}")
+        yield from process_type()
 
     def _get_multi_faces_frames(self):
         """ Return Frames that contain multiple faces """
@@ -135,7 +134,7 @@ class Check():
     def _get_missing_alignments(self):
         """ yield each frame that does not exist in alignments file """
         self.output_message = "Frames missing from alignments file"
-        exclude_filetypes = set(["yaml", "yml", "p", "json", "txt"])
+        exclude_filetypes = {"yaml", "yml", "p", "json", "txt"}
         for frame in tqdm(self._items, desc=self.output_message):
             frame_name = frame["frame_fullname"]
             if (frame["frame_extension"] not in exclude_filetypes
@@ -147,7 +146,7 @@ class Check():
         """ yield each frame in alignments that does
             not have a matching file """
         self.output_message = "Missing frames that are in alignments file"
-        frames = set(item["frame_fullname"] for item in self._items)
+        frames = {item["frame_fullname"] for item in self._items}
         for frame in tqdm(self._alignments.data.keys(), desc=self.output_message):
             if frame not in frames:
                 logger.debug("Returning: '%s'", frame)
@@ -169,9 +168,11 @@ class Check():
         if self._job == "multi-faces" and self._type == "faces":
             # Strip the index for printed/file output
             items_output = [item[0] for item in items_output]
-        output_message = "-----------------------------------------------\r\n"
-        output_message += " {} ({})\r\n".format(self.output_message,
-                                                len(items_output))
+        output_message = (
+            "-----------------------------------------------\r\n"
+            + f" {self.output_message} ({len(items_output)})\r\n"
+        )
+
         output_message += "-----------------------------------------------\r\n"
         output_message += "\r\n".join(items_output)
         if self._output == "console":
@@ -191,16 +192,15 @@ class Check():
         """ Video name needs to be prefixed to filename if input is a
             video and processing frames """
         if self._is_video and self._type == "frames":
-            return "{}_".format(os.path.basename(self._source_dir))
+            return f"{os.path.basename(self._source_dir)}_"
         return ""
 
     def output_file(self, output_message, items_discovered):
         """ Save the output to a text file in the frames directory """
         now = datetime.now().strftime("%Y%m%d_%H%M%S")
         dst_dir = self._get_output_folder()
-        filename = "{}{}_{}.txt".format(self._get_filename_prefix(),
-                                        self.output_message.replace(" ", "_").lower(),
-                                        now)
+        filename = f'{self._get_filename_prefix()}{self.output_message.replace(" ", "_").lower()}_{now}.txt'
+
         output_file = os.path.join(dst_dir, filename)
         logger.info("Saving %s result(s) to '%s'", items_discovered, output_file)
         with open(output_file, "w") as f_output:
@@ -209,13 +209,13 @@ class Check():
     def _move_file(self, items_output):
         """ Move the identified frames to a new sub folder """
         now = datetime.now().strftime("%Y%m%d_%H%M%S")
-        folder_name = "{}{}_{}".format(self._get_filename_prefix(),
-                                       self.output_message.replace(" ", "_").lower(), now)
+        folder_name = f'{self._get_filename_prefix()}{self.output_message.replace(" ", "_").lower()}_{now}'
+
         dst_dir = self._get_output_folder()
         output_folder = os.path.join(dst_dir, folder_name)
         logger.debug("Creating folder: '%s'", output_folder)
         os.makedirs(output_folder)
-        move = getattr(self, "_move_{}".format(self._type))
+        move = getattr(self, f"_move_{self._type}")
         logger.debug("Move function: %s", move)
         move(output_folder, items_output)
 
@@ -282,7 +282,7 @@ class Draw():  # pylint:disable=too-few-public-methods
 
         """
         now = datetime.now().strftime("%Y%m%d_%H%M%S")
-        folder_name = "drawn_landmarks_{}".format(now)
+        folder_name = f"drawn_landmarks_{now}"
         if self._frames.is_video:
             dest_folder = os.path.dirname(self._frames.folder)
         else:
@@ -430,7 +430,7 @@ class Extract():  # pylint:disable=too-few-public-methods
             logger.debug("Creating folder: '%s'", self._faces_dir)
             os.makedirs(self._faces_dir)
         elif os.listdir(self._faces_dir):
-            err = "ERROR: Output faces folder should be empty: '{}'".format(self._faces_dir)
+            err = f"ERROR: Output faces folder should be empty: '{self._faces_dir}'"
         if err:
             logger.error(err)
             sys.exit(0)
@@ -529,7 +529,7 @@ class Extract():  # pylint:disable=too-few-public-methods
             faces = self._process_legacy(filename, image, faces)
 
         for idx, face in enumerate(faces):
-            output = "{}_{}.png".format(frame_name, str(idx))
+            output = f"{frame_name}_{str(idx)}.png"
             meta = dict(alignments=face.to_png_meta(),
                         source=dict(alignments_version=self._alignments.version,
                                     original_filename=output,
@@ -649,7 +649,7 @@ class RemoveFaces():  # pylint:disable=too-few-public-methods
         logger.debug("Initializing %s: (arguments: %s)", self.__class__.__name__, arguments)
         self._alignments = alignments
 
-        kwargs = dict()
+        kwargs = {}
         if alignments.version < 2.1:
             # Update headers of faces generated with hash based alignments
             kwargs["alignments"] = alignments
@@ -704,7 +704,7 @@ class RemoveFaces():  # pylint:disable=too-few-public-methods
                          fullpath, face_index, new_index)
 
             # Update file_list_sorted for rename task
-            orig_filename = "{}_{}.png".format(os.path.splitext(frame)[0], new_index)
+            orig_filename = f"{os.path.splitext(frame)[0]}_{new_index}.png"
             file_info["face_index"] = new_index
             file_info["original_filename"] = orig_filename
 
@@ -739,11 +739,11 @@ class Rename():  # pylint:disable=too-few-public-methods
                      self.__class__.__name__, arguments, faces)
         self._alignments = alignments
 
-        kwargs = dict()
+        kwargs = {}
         if alignments.version < 2.1:
             # Update headers of faces generated with hash based alignments
             kwargs["alignments"] = alignments
-        self._faces = faces if faces else Faces(arguments.faces_dir, **kwargs)
+        self._faces = faces or Faces(arguments.faces_dir, **kwargs)
         logger.debug("Initialized %s", self.__class__.__name__)
 
     def process(self):
@@ -786,7 +786,7 @@ class Rename():  # pylint:disable=too-few-public-methods
                 # process afterwards
                 logger.debug("interim renaming file to avoid conflict: (src: '%s', dst: '%s')",
                              src, dst)
-                new = new + ".tmp"
+                new = f"{new}.tmp"
                 conflicts.append(new)
 
             logger.verbose("Renaming '%s' to '%s'", old, new)
@@ -823,8 +823,7 @@ class Sort():
     def process(self):
         """ Execute the sort process """
         logger.info("[SORT INDEXES]")  # Tidy up cli output
-        reindexed = self.reindex_faces()
-        if reindexed:
+        if reindexed := self.reindex_faces():
             self._alignments.save()
             logger.warning("If you have a face-set corresponding to the alignment file you "
                            "processed then you should run the 'Extract' job to regenerate it.")
@@ -858,8 +857,8 @@ class Spatial():
         logger.debug("Initializing %s: (arguments: %s)", self.__class__.__name__, arguments)
         self.arguments = arguments
         self._alignments = alignments
-        self.mappings = dict()
-        self.normalized = dict()
+        self.mappings = {}
+        self.normalized = {}
         self.shapes_model = None
         logger.debug("Initialized %s", self.__class__.__name__)
 

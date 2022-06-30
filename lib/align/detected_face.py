@@ -196,8 +196,7 @@ class DetectedFace():
             landmarks = self.landmarks_xy
         points = [landmarks[zone] for zone in areas[area]]  # pylint:disable=unsubscriptable-object
         mask = _LandmarksMask(size, points, dilation=dilation, blur_kernel=blur_kernel)
-        retval = mask.get(as_zip=as_zip)
-        return retval
+        return mask.get(as_zip=as_zip)
 
     def to_alignment(self):
         """  Return the detected face formatted for an alignments file
@@ -241,8 +240,12 @@ class DetectedFace():
             Default: ``False``
         """
 
-        logger.trace("Creating from alignment: (alignment: %s, has_image: %s)",
-                     alignment, bool(image is not None))
+        logger.trace(
+            "Creating from alignment: (alignment: %s, has_image: %s)",
+            alignment,
+            image is not None,
+        )
+
         self.x = alignment["x"]
         self.w = alignment["w"]
         self.y = alignment["y"]
@@ -259,7 +262,7 @@ class DetectedFace():
         self.aligned = None
 
         if alignment.get("mask", None) is not None:
-            self.mask = dict()
+            self.mask = {}
             for name, mask_dict in alignment["mask"].items():
                 self.mask[name] = Mask()
                 self.mask[name].from_dict(mask_dict)
@@ -276,13 +279,14 @@ class DetectedFace():
             The alignments dict will be returned with the keys ``x``, ``w``, ``y``, ``h``,
             ``landmarks_xy`` and ``mask``
         """
-        alignment = dict(x=self.x,
-                         w=self.w,
-                         y=self.y,
-                         h=self.h,
-                         landmarks_xy=self.landmarks_xy.tolist(),
-                         mask={name: mask.to_png_meta() for name, mask in self.mask.items()})
-        return alignment
+        return dict(
+            x=self.x,
+            w=self.w,
+            y=self.y,
+            h=self.h,
+            landmarks_xy=self.landmarks_xy.tolist(),
+            mask={name: mask.to_png_meta() for name, mask in self.mask.items()},
+        )
 
     def from_png_meta(self, alignment):
         """ Set the attributes of this class from alignments stored in a png exif header.
@@ -298,7 +302,7 @@ class DetectedFace():
         self.y = alignment["y"]
         self.h = alignment["h"]
         self.landmarks_xy = np.array(alignment["landmarks_xy"], dtype="float32")
-        self.mask = dict()
+        self.mask = {}
         for name, mask_dict in alignment["mask"].items():
             self.mask[name] = Mask()
             self.mask[name].from_dict(mask_dict)
@@ -463,7 +467,7 @@ class Mask():
         self._affine_matrix = None
         self._interpolator = None
 
-        self._blur = dict()
+        self._blur = {}
         self._blur_kernel = 0
         self._threshold = 0.0
         self._sub_crop = dict(size=None, slice_in=[], slice_out=[])
@@ -678,9 +682,17 @@ class Mask():
             The :class:`Mask` for saving to an alignments file. Contains the keys ``mask``,
             ``affine_matrix``, ``interpolator``, ``stored_size``, ``stored_centering``
         """
-        retval = dict()
-        for key in ("mask", "affine_matrix", "interpolator", "stored_size", "stored_centering"):
-            retval[key] = getattr(self, self._attr_name(key))
+        retval = {
+            key: getattr(self, self._attr_name(key))
+            for key in (
+                "mask",
+                "affine_matrix",
+                "interpolator",
+                "stored_size",
+                "stored_centering",
+            )
+        }
+
         logger.trace({k: v if k != "mask" else type(v) for k, v in retval.items()})
         return retval
 
@@ -693,13 +705,10 @@ class Mask():
             The :class:`Mask` for saving to an alignments file. Contains the keys ``mask``,
             ``affine_matrix``, ``interpolator``, ``stored_size``, ``stored_centering``
         """
-        retval = dict()
+        retval = {}
         for key in ("mask", "affine_matrix", "interpolator", "stored_size", "stored_centering"):
             val = getattr(self, self._attr_name(key))
-            if isinstance(val, np.ndarray):
-                retval[key] = val.tolist()
-            else:
-                retval[key] = val
+            retval[key] = val.tolist() if isinstance(val, np.ndarray) else val
         logger.trace({k: v if k != "mask" else type(v) for k, v in retval.items()})
         return retval
 
@@ -734,7 +743,7 @@ class Mask():
         attribute_name: str
             The attribute name for the given key for :class:`Mask`
         """
-        retval = "_{}".format(dict_key) if not dict_key.startswith("stored") else dict_key
+        retval = dict_key if dict_key.startswith("stored") else f"_{dict_key}"
         logger.trace("dict_key: %s, attribute_name: %s", dict_key, retval)
         return retval
 
@@ -881,7 +890,7 @@ class BlurMask():  # pylint:disable=too-few-public-methods
         return retval
 
 
-_HASHES_SEEN = dict()
+_HASHES_SEEN = {}
 
 
 def update_legacy_png_header(filename, alignments):
@@ -911,7 +920,7 @@ def update_legacy_png_header(filename, alignments):
     # effective enough
     folder = os.path.dirname(filename)
     if folder not in _HASHES_SEEN:
-        _HASHES_SEEN[folder] = dict()
+        _HASHES_SEEN[folder] = {}
     hashes_seen = _HASHES_SEEN[folder]
 
     in_image = read_image(filename, raise_error=True)
@@ -927,7 +936,7 @@ def update_legacy_png_header(filename, alignments):
     detected_face.from_alignment(alignment)
     # For dupe hash handling, make sure we get a different filename for repeat hashes
     src_fname, face_idx = list(alignments.hashes_to_frame[in_hash].items())[hashes_seen[in_hash]]
-    orig_filename = "{}_{}.png".format(os.path.splitext(src_fname)[0], face_idx)
+    orig_filename = f"{os.path.splitext(src_fname)[0]}_{face_idx}.png"
     meta = dict(alignments=detected_face.to_png_meta(),
                 source=dict(alignments_version=alignments.version,
                             original_filename=orig_filename,

@@ -48,13 +48,13 @@ class MultiThread():
     """ Threading for IO heavy ops
         Catches errors in thread and rethrows to parent """
     def __init__(self, target, *args, thread_count=1, name=None, **kwargs):
-        self._name = name if name else target.__name__
+        self._name = name or target.__name__
         logger.debug("Initializing %s: (target: '%s', thread_count: %s)",
                      self.__class__.__name__, self._name, thread_count)
         logger.trace("args: %s, kwargs: %s", args, kwargs)
         self.daemon = True
         self._thread_count = thread_count
-        self._threads = list()
+        self._threads = []
         self._target = target
         self._args = args
         self._kwargs = kwargs
@@ -91,7 +91,7 @@ class MultiThread():
         """ Start a thread with the given method and args """
         logger.debug("Starting thread(s): '%s'", self._name)
         for idx in range(self._thread_count):
-            name = "{}_{}".format(self._name, idx)
+            name = f"{self._name}_{idx}"
             logger.debug("Starting thread %s of %s: '%s'",
                          idx + 1, self._thread_count, name)
             thread = FSThread(name=name,
